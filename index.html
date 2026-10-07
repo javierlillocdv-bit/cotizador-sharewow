@@ -292,6 +292,33 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .toast.show{opacity:1}
 @media (max-width:640px){.grid{gap:16px}.top{padding:12px 14px}main{padding:4px 14px 50px}.top h1{font-size:26px}}
 @media (prefers-reduced-motion: reduce){.shake{animation:none}.toast{transition:none}}
+/* Precio rápido (mantener apretado) */
+.choice2,.tile{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.choice2 img,.tile img{pointer-events:none;-webkit-user-drag:none;-webkit-touch-callout:none}
+.qp-press{transform:scale(.96)!important;transition:transform .45s ease!important}
+#qp{width:min(680px,calc(100vw - 24px));overflow:hidden}
+#qp::backdrop{background:rgba(5,8,6,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.qp{display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
+.qp-head{display:flex;gap:14px;align-items:center;padding:18px 16px 14px 18px;border-bottom:1px solid var(--line)}
+.qp-thumb{width:64px;height:64px;border-radius:14px;object-fit:cover;object-position:center 30%;background:#fff;flex:none}
+.qp-ht{flex:1;min-width:0}
+.qp-kicker{color:var(--green);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.qp-ht h3{margin:2px 0 0;font-family:"Barlow Condensed",Barlow,sans-serif;font-size:30px;font-weight:700;line-height:1.05}
+.qp-sub{color:var(--muted);font-size:15px;margin-top:3px}
+.qp-x{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:var(--ink);font-size:32px;line-height:1;flex:none;cursor:pointer}
+.qp-body{overflow:auto;-webkit-overflow-scrolling:touch;padding:4px 18px 10px;flex:1}
+.qp-grp{margin:20px 0 0;font-family:"Barlow Condensed",Barlow,sans-serif;font-size:25px;font-weight:700;color:var(--green)}
+.qp-sec{margin:14px 0 4px}
+.qp-st{font-weight:700;font-size:16px;margin-bottom:8px}
+.qp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.qp-cell{border:1.5px solid var(--line);border-radius:14px;padding:9px 12px;display:flex;flex-direction:column;gap:1px}
+.qp-cm{font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700;font-size:22px;line-height:1.1}
+.qp-pr{font-weight:700;color:var(--green-dark);font-size:17px}
+.qp-notes{margin:16px 0 6px;padding-left:18px;color:var(--muted);font-size:14.5px;line-height:1.45}
+.qp-notes li{margin:3px 0}
+.qp-foot{display:flex;gap:10px;padding:14px 18px 18px;border-top:1px solid var(--line)}
+.qp-foot .btn{flex:1;padding:13px 18px;font-size:17px}
+.qp-hint{text-align:center;color:var(--muted);font-size:15px;margin:20px 0 0}
 </style>
 </head>
 <body>
@@ -303,6 +330,7 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 </div>
 <div id="root"><div class="lock"><p style="color:var(--muted)">Cargando…</p></div></div>
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<dialog id="qp" aria-label="Precio rápido"><div class="qp" id="qpBody"></div></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -1110,7 +1138,7 @@ function cabScreenHTML(node){
   if(s==="inicio") return `<div class="med"><div class="pillhead">¿Qué figura?</div><div class="choices">
       ${bigBtn("1 persona","",'data-a="start" data-v="sola"',"cab_sola")}
       ${bigBtn("Grupo","Personas juntas, con o sin mascota",'data-a="start" data-v="grupo"',"cab_grupo")}
-      ${bigBtn("Mascota sola","",'data-a="start" data-v="mascota"',"cab_mascota")}</div></div>`;
+      ${bigBtn("Mascota sola","",'data-a="start" data-v="mascota"',"cab_mascota")}</div>${QP_HINT}</div>`;
 
   if(s==="estatura") return `<div class="med"><div class="pillhead">¿Cuánto mide?</div><div class="choices">
       ${bigBtn("1,41 m o más","Persona alta",'data-a="tabla" data-v="alto"',"cab_alto")}
@@ -1485,7 +1513,7 @@ function cartoonScreenHTML(node){
   if(s==="cats") return `<div class="med"><div class="pillhead">¿Qué producto?</div><div class="choices">
       ${C.cats.map(k=>{ const ds=k.productos.map(prodDesde).filter(okP);
         return bigBtn(k.nombre, `${k.productos.length} opci${k.productos.length===1?"ón":"ones"}${ds.length?" · desde "+money(Math.min(...ds)):""}`, `data-a="cat" data-v="${esc(k.id)}"`,"ct_cat_"+k.id); }).join("")}
-      </div></div>`;
+      </div>${QP_HINT}</div>`;
   if(s==="prods"){
     const k=ctCat(); if(!k) return "";
     return `<div class="med"><div class="pillhead">${esc(k.nombre)}</div><div class="choices">
@@ -2153,6 +2181,141 @@ function openSettings(){
     dlg.close(); renderApp();
   };
 }
+
+/* ---------- Precio rápido: mantener apretado un producto ---------- */
+const QP_HINT = `<p class="qp-hint">Mantén apretado un botón para ver medidas y precios al instante</p>`;
+const qpDlg = document.getElementById("qp");
+const qpBody = document.getElementById("qpBody");
+const qpFmt = n => okP(n) ? money(n) : "Consultar";
+const cmRow = cm => cmTxt(cm)+" cm";
+
+function qpSolas(keys){ return keys.map(t=>({titulo:TABLA_TXT[t], filas: tbl("solas",t).map(r=>[cmRow(r.cm), r.precio])})); }
+const qpNotaPos = ()=>`Arrodillado o en silla ×${cmTxt(P.mult.arrod)} · Sentadilla o en el suelo ×${cmTxt(P.mult.suelo)}`;
+const qpNotaAcc = ()=>`Accesorios aparte: grande +${cmTxt(P.pct.grande)}% · chico +${cmTxt(P.pct.chicoSolas)}% del valor de la figura`;
+function qpGrupoSecs(){
+  const ts = P.grupo.tallas||[];
+  return [{titulo:"Persona más alta", filas: ts.map(t=>[cmRow(t), priceAt("unidas","alto",t)])},
+          {titulo:"Si todos miden hasta 1,40 m (persona más alta)", filas: ts.map(t=>[cmRow(t), priceAt("unidas","bajo",t)])}];
+}
+const qpNotaGrupo = ()=>"El más alto se cobra con la medida elegida; los demás en proporción a su estatura, subiendo a la medida siguiente.";
+function qpMascota(razas){ return razas.map(k=>{ const cm=P.mascotaSola[k]||4; return {titulo:`${RAZA_TXT[k]} · ${cmTxt(cm)} cm`, filas: PPOS.map(pos=>[PPOS_TXT[pos], petPrice(cm,pos)])}; }); }
+
+function qpProdSec(p, titulo){
+  const bits=[]; if(p.estilos&&p.estilos.length) bits.push(`${p.estilos.length} estilo${p.estilos.length>1?"s":""}`); if(p.tipos&&p.tipos.length) bits.push(`${p.tipos.length} tipos`);
+  return {titulo: titulo!=null ? titulo : p.nombre+(bits.length?" · "+bits.join(" · "):""), filas: prodMeds(p).map(m=>[cmRow(m.cm), m.precio])};
+}
+const qpNotaMods = ()=>`Sentado o hincado +${cmTxt(C.mods.sentado)}% · En el piso o cuclillas +${cmTxt(C.mods.piso)}%`;
+const qpNotaCAcc = ()=>`Accesorios aparte: grande +${cmTxt(C.mods.grande)}% · chico +${cmTxt(C.mods.chico)}% del valor de la figura`;
+function qpProdNotas(p){
+  const n=[];
+  if(p.tipos&&p.tipos.length) n.push(`Tipos: ${p.tipos.join(", ")}`);
+  if(p.estilos&&p.estilos.length) n.push(`Estilos (todos al mismo precio): ${p.estilos.join(", ")}`);
+  if(p.mods) n.push(qpNotaMods());
+  if(prodAcc(p)) n.push(qpNotaCAcc()); else if(p.detalle) n.push(p.detalle);
+  return n;
+}
+function qpCatNotas(k){
+  const n=[]; if(k.productos.some(p=>p.mods)) n.push(qpNotaMods()+" (figuras de personas)");
+  if(k.productos.some(p=>prodAcc(p))) n.push(qpNotaCAcc());
+  return n;
+}
+function qpCabinaTodo(){
+  const secs=[];
+  qpSolas(["alto","bajo","bebe"]).forEach(x=>secs.push({grupo:"1 persona", ...x}));
+  qpGrupoSecs().forEach(x=>secs.push({grupo:"Grupo", ...x}));
+  qpMascota(["chica","mediana","grande","gato"]).forEach(x=>secs.push({grupo:"Mascota sola", ...x}));
+  return {titulo:"Figuras en cabina", sub:"Lista de precios", secciones:secs, notas:[qpNotaPos(), qpNotaAcc(), qpNotaGrupo()]};
+}
+function qpCartoonTodo(){
+  const secs=[]; C.cats.forEach(k=>k.productos.forEach(p=>secs.push({grupo:k.nombre, ...qpProdSec(p)})));
+  return {titulo:"Figuras cartoon", sub:"Lista de precios", secciones:secs, notas:[qpNotaMods()+" (figuras de personas)", qpNotaCAcc()]};
+}
+function qpInfo(el){
+  if(el.matches(".tile[data-open]")){
+    let t=null; walk(menu.tiles, x=>{ if(x.id===el.dataset.open) t=x; });
+    if(t && t.tipo==="cabina") return qpCabinaTodo();
+    if(t && t.tipo==="cartoon") return qpCartoonTodo();
+    return null;
+  }
+  const a=el.dataset.a, v=el.dataset.v;
+  if(a==="start"){
+    if(v==="sola") return {titulo:"1 persona", sub:"Figuras en cabina", secciones:qpSolas(["alto","bajo","bebe"]), notas:[qpNotaPos(), qpNotaAcc()]};
+    if(v==="grupo") return {titulo:"Grupo", sub:"Figuras en cabina · figuras unidas", secciones:qpGrupoSecs(), notas:[qpNotaGrupo(), qpNotaPos(), qpNotaAcc()]};
+    if(v==="mascota") return {titulo:"Mascota sola", sub:"Figuras en cabina", secciones:qpMascota(["chica","mediana","grande","gato"]), notas:[]};
+  }
+  if(a==="tabla" && TABLA_TXT[v]) return {titulo:TABLA_TXT[v], sub:"1 persona · Figuras en cabina", secciones:qpSolas([v]).map(x=>({...x, titulo:""})), notas: v==="bebe"?[qpNotaAcc()]:[qpNotaPos(), qpNotaAcc()]};
+  if(a==="raza" && RAZA_TXT[v]) return {titulo:RAZA_TXT[v], sub:"Mascota sola · Figuras en cabina", secciones:qpMascota([v]), notas:[]};
+  if(a==="mpos" && cab.q && cab.q.raza) return {titulo:RAZA_TXT[cab.q.raza], sub:"Mascota sola · Figuras en cabina", secciones:qpMascota([cab.q.raza]), notas:[]};
+  if(a==="cat"){ const k=C.cats.find(x=>x.id===v); if(!k) return null;
+    return {titulo:k.nombre, sub:`Figuras cartoon · ${k.productos.length} opci${k.productos.length===1?"ón":"ones"}`, secciones:k.productos.map(p=>qpProdSec(p)), notas:qpCatNotas(k)}; }
+  if(a==="prod"){ const k=ctCat(), p=k&&k.productos.find(x=>x.id===v); if(!p) return null;
+    return {titulo:p.nombre, sub:k.nombre, secciones:[qpProdSec(p,"")], notas:qpProdNotas(p)}; }
+  if(a==="ctipo"||a==="cest"){ const k=ctCat(), p=ctProd(); if(!p) return null;
+    const extra = a==="cest" ? (ct.tipo?ct.tipo+" · ":"")+"estilo "+v : v;
+    return {titulo:p.nombre, sub:`${k.nombre} · ${extra}`, secciones:[qpProdSec(p,"")], notas:qpProdNotas(p)}; }
+  return null;
+}
+function qpHTML(info){
+  let last=null;
+  const secs = info.secciones.map(sc=>{
+    const g = sc.grupo && sc.grupo!==last ? `<div class="qp-grp">${esc(sc.grupo)}</div>` : ""; if(sc.grupo) last=sc.grupo;
+    return `${g}<div class="qp-sec">${sc.titulo?`<div class="qp-st">${esc(sc.titulo)}</div>`:""}
+      <div class="qp-grid">${sc.filas.map(([a,pr])=>`<div class="qp-cell"><span class="qp-cm">${esc(a)}</span><span class="qp-pr">${esc(qpFmt(pr))}</span></div>`).join("")}</div></div>`;
+  }).join("");
+  return `<div class="qp-head">${info.img?`<img class="qp-thumb" src="${esc(info.img)}" alt="">`:""}
+      <div class="qp-ht"><div class="qp-kicker">⚡ Precio rápido</div><h3>${esc(info.titulo)}</h3>${info.sub?`<div class="qp-sub">${esc(info.sub)}</div>`:""}</div>
+      <button class="qp-x" id="qpX" aria-label="Cerrar">×</button></div>
+    <div class="qp-body">${secs}${info.notas&&info.notas.length?`<ul class="qp-notes">${info.notas.map(n=>`<li>${esc(n)}</li>`).join("")}</ul>`:""}</div>
+    <div class="qp-foot"><button class="btn" id="qpCopy">Copiar precios</button><button class="btn primary" id="qpGo">Cotizar</button></div>`;
+}
+function qpText(info){
+  const L=[info.titulo+(info.sub?" ("+info.sub+")":"")]; let last=null;
+  info.secciones.forEach(sc=>{
+    if(sc.grupo && sc.grupo!==last){ L.push("", sc.grupo.toUpperCase()); last=sc.grupo; }
+    L.push(""); if(sc.titulo) L.push(sc.titulo+":");
+    sc.filas.forEach(([a,pr])=>L.push(`${a}: ${qpFmt(pr)}`));
+  });
+  if(info.notas&&info.notas.length){ L.push(""); info.notas.forEach(n=>L.push("• "+n)); }
+  return L.join("\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+let qpOpenedAt=0;
+function openQP(info, el){
+  const im = el.querySelector("img"); if(im) info.img = im.getAttribute("src");
+  qpBody.innerHTML = qpHTML(info); hydrateImgs(qpBody);
+  document.getElementById("qpX").onclick = ()=>qpDlg.close();
+  document.getElementById("qpCopy").onclick = async ()=>{
+    const t = qpText(info);
+    try{ await navigator.clipboard.writeText(t); toast("Precios copiados"); return; }catch(e){}
+    try{ const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; qpDlg.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); toast("Precios copiados"); }catch(e){ toast("No se pudo copiar"); }
+  };
+  document.getElementById("qpGo").onclick = ()=>{ qpDlg.close(); qpFired=false; if(el.isConnected) el.click(); };
+  qpOpenedAt = Date.now();
+  try{ qpDlg.showModal(); }catch(e){ qpDlg.setAttribute("open",""); }
+  const b = qpDlg.querySelector(".qp-body"); if(b) b.scrollTop = 0;
+}
+qpDlg.addEventListener("click", e=>{ if(e.target===qpDlg && Date.now()-qpOpenedAt>600) qpDlg.close(); });
+
+const QP_SEL = ".tile[data-open], button.choice2[data-a]";
+let qpTimer=null, qpEl=null, qpXY=null, qpFired=false;
+function qpCancel(){ clearTimeout(qpTimer); qpTimer=null; if(qpEl) qpEl.classList.remove("qp-press"); qpEl=null; }
+root.addEventListener("pointerdown", e=>{
+  qpFired=false;
+  if(editing || (e.pointerType==="mouse" && e.button!==0)) return;
+  const el = e.target.closest(QP_SEL); if(!el || !root.contains(el)) return;
+  const info = qpInfo(el); if(!info) return;
+  qpCancel(); qpEl=el; qpXY=[e.clientX,e.clientY]; el.classList.add("qp-press");
+  qpTimer = setTimeout(()=>{ const t=qpEl; qpCancel(); if(!t) return; qpFired=true; openQP(info, t); }, 480);
+});
+root.addEventListener("pointermove", e=>{ if(qpEl && qpXY && Math.hypot(e.clientX-qpXY[0], e.clientY-qpXY[1])>12) qpCancel(); });
+root.addEventListener("pointerup", ()=>{ qpCancel(); if(qpFired) setTimeout(()=>{ qpFired=false; }, 600); });
+root.addEventListener("pointercancel", qpCancel);
+root.addEventListener("click", e=>{ if(qpFired){ qpFired=false; e.preventDefault(); e.stopPropagation(); } }, true);
+root.addEventListener("contextmenu", e=>{
+  const el = e.target.closest(QP_SEL); if(!el || !root.contains(el) || editing) return;
+  e.preventDefault();
+  if(qpDlg.open) return;
+  const info = qpInfo(el); if(info){ qpCancel(); qpFired=true; openQP(info, el); setTimeout(()=>{ qpFired=false; }, 600); }
+});
 
 dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 
