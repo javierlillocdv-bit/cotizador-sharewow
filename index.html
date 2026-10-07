@@ -91,6 +91,7 @@ button.tile:active{transform:scale(.99)}
 /* Pantalla de clave */
 .lock{min-height:calc(100vh - 40px);display:grid;place-items:center;padding:20px}
 .lock-card{width:100%;max-width:380px;text-align:center}
+.prep-bar{height:12px;border-radius:99px;background:#e6efe6;overflow:hidden;margin:14px 0 10px}.prep-bar span{display:block;height:100%;width:0;background:var(--green,#3BB33E);border-radius:99px;transition:width .15s}
 .lock h2{font-family:"Barlow Condensed",Barlow,sans-serif;font-size:44px;font-weight:700;margin:0 0 4px}
 .lock p{color:var(--muted);margin:0 0 20px}
 .dots{display:flex;justify-content:center;gap:14px;margin-bottom:22px;min-height:20px}
@@ -378,24 +379,62 @@ function deleteImg(id){
 }
 function savePin(){ if(!db) lsSet(LS_PIN, JSON.stringify(pin)); }
 
-/* Precarga: todas las fotos se descargan y preparan al abrir la página,
-   así al entrar a cada pantalla ya están listas. */
-const PRE = new Map(); let PRE_OK = 0; window.__fotosListas = ()=>PRE_OK;
+/* Precarga: todas las fotos se descargan y quedan listas en memoria al abrir
+   la página. Los botones usan esas mismas fotos ya listas, así nunca se ven cargando. */
+const PRE = new Map(); let PRE_OK = 0, PRE_DONE = 0, PRE_TOTAL = 0; window.__fotosListas = ()=>PRE_OK;
 const PRE_ORDEN = ["cabina","cartoon","x_cab_sola","x_cab_grupo","x_cab_mascota","x_ct_cat_","x_cab_alto","x_cab_bajo","x_cab_bebe","x_cab_raza_","x_ct_prod_","x_cab_mpos_","x_ct_est_"];
+const preQ = []; let preActive = 0;
 function preloadImgs(){
   const prio = k => { const i = PRE_ORDEN.findIndex(p => k===p || (p.endsWith("_") && k.startsWith(p))); return i<0 ? 99 : i; };
-  const urls = Object.keys(imgs).sort((a,b)=>prio(a)-prio(b) || a.localeCompare(b))
-    .map(k=>imgs[k]).filter(u=>u && !String(u).startsWith("data:") && !PRE.has(u));
-  let i = 0;
-  const next = ()=>{
-    if(i>=urls.length) return;
-    const u = urls[i++]; if(PRE.has(u)) return next();
-    const im = new Image(); PRE.set(u, im);
-    const done = ()=>{ (im.decode ? im.decode().catch(()=>{}) : Promise.resolve()).then(next); };
-    im.onload = ()=>{ PRE_OK++; done(); }; im.onerror = next; im.src = u;
-  };
-  for(let k=0;k<6;k++) next();
+  Object.keys(imgs).sort((a,b)=>prio(a)-prio(b) || a.localeCompare(b)).map(k=>imgs[k])
+    .filter(u=>u && !String(u).startsWith("data:") && !PRE.has(u))
+    .forEach(u=>{ PRE.set(u, null); preQ.push(u); PRE_TOTAL++; });
+  prePump();
 }
+function prePump(){
+  while(preActive<6 && preQ.length){
+    const u = preQ.shift(); preActive++;
+    const im = new Image(); im.decoding = "sync";
+    const fin = ok=>{ preActive--; PRE_DONE++; if(ok){ PRE_OK++; PRE.set(u, im); } prePump(); };
+    im.onload = ()=>{ (im.decode ? im.decode().catch(()=>{}) : Promise.resolve()).then(()=>fin(true)); };
+    im.onerror = ()=>fin(false);
+    im.src = u;
+  }
+}
+// Cambia cada foto nueva de la pantalla por la que ya está lista en memoria (antes de que se dibuje)
+function hydrateImgs(scope){
+  const list = scope.tagName==="IMG" ? [scope] : (scope.querySelectorAll ? scope.querySelectorAll("img") : []);
+  list.forEach(img=>{
+    if(img.dataset.pre) return;
+    const p = PRE.get(img.getAttribute("src"));
+    if(!p || !p.complete || !p.naturalWidth) return;
+    const el = p.isConnected ? p.cloneNode(false) : p;
+    el.alt = img.alt || ""; el.className = img.className;
+    const st = img.getAttribute("style"); if(st) el.setAttribute("style", st); else el.removeAttribute("style");
+    el.setAttribute("decoding","sync"); el.dataset.pre = "1";
+    img.replaceWith(el);
+  });
+}
+new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(n=>{ if(n.nodeType===1) hydrateImgs(n); })); })
+  .observe(root, {childList:true, subtree:true});
+// Antes de mostrar los botones, espera a que todas las fotos estén listas
+function waitFotos(maxMs){
+  return new Promise(res=>{
+    const t0 = Date.now(); let shown = false;
+    const tick = ()=>{
+      if(PRE_DONE>=PRE_TOTAL || Date.now()-t0>maxMs) return res();
+      if(Date.now()-t0>400){
+        const pct = PRE_TOTAL ? Math.round(PRE_DONE*100/PRE_TOTAL) : 0;
+        if(!shown){ shown = true; root.innerHTML = `<div class="lock"><div class="lock-card"><h2>Preparando fotos</h2><p id="prepTxt"></p><div class="prep-bar"><span id="prepBar"></span></div><p class="small">Solo la primera vez en este equipo tarda unos segundos.</p></div></div>`; }
+        const t = document.getElementById("prepTxt"), b = document.getElementById("prepBar");
+        if(t) t.textContent = `${PRE_DONE} de ${PRE_TOTAL}`; if(b) b.style.width = pct+"%";
+      }
+      setTimeout(tick, 80);
+    };
+    tick();
+  });
+}
+async function enterApp(){ await waitFotos(40000); renderApp(); }
 function registerSW(){
   try{ if("serviceWorker" in navigator && location.protocol!=="file:"){
     navigator.serviceWorker.register("sw.js").then(r=>{ try{ r.update(); }catch(e){} }).catch(()=>{});
@@ -472,7 +511,7 @@ function showLock(mode){
       pin = {salt, hash}; TOKEN = hash;
       savePin(); showLock.first="";
       try{sessionStorage.setItem(SS_TOKEN,hash)}catch(e){}
-      toast("Clave creada"); return renderApp();
+      toast("Clave creada"); return enterApp();
     }
     const h = await sha(SALT_PREFIX+pin.salt+entered);
     if(db){
@@ -482,7 +521,7 @@ function showLock(mode){
     } else if(h!==pin.hash) return fail("Clave incorrecta");
     try{sessionStorage.setItem(SS_TOKEN,h)}catch(e){}
     const rem=document.getElementById("rem"); if(rem&&rem.checked) lsSet(LS_TOKEN,h); else lsDel(LS_TOKEN);
-    renderApp();
+    enterApp();
   };
   root.querySelectorAll("[data-n]").forEach(b=>b.addEventListener("click",()=>{ if(entered.length<8){entered+=b.dataset.n;err.textContent="";draw();} }));
   root.querySelector('[data-a="clear"]').addEventListener("click",()=>{entered=entered.slice(0,-1);draw();});
@@ -2119,7 +2158,7 @@ dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 
 (async ()=>{
   await loadAll();
-  if(await isUnlocked()) renderApp(); else showLock();
+  if(await isUnlocked()) enterApp(); else showLock();
 })();
 })();
 </script>
