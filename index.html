@@ -368,7 +368,7 @@ function saveMenu(){
 }
 function saveImg(id, src){
   imgs[id]=src;
-  if(db) queueWrite(()=>api("img",{key:id, src}).then(r=>{ if(r&&r.url) imgs[id]=r.url; }));
+  if(db) queueWrite(()=>api("img",{key:id, src}).then(r=>{ if(r&&r.url && !PRE.has(r.url)){ const im=new Image(); im.src=r.url; PRE.set(r.url, im); } }));
   else lsSet(LS_IMG+id, src);
 }
 function deleteImg(id){
@@ -378,9 +378,34 @@ function deleteImg(id){
 }
 function savePin(){ if(!db) lsSet(LS_PIN, JSON.stringify(pin)); }
 
+/* Precarga: todas las fotos se descargan y preparan al abrir la página,
+   así al entrar a cada pantalla ya están listas. */
+const PRE = new Map(); let PRE_OK = 0; window.__fotosListas = ()=>PRE_OK;
+const PRE_ORDEN = ["cabina","cartoon","x_cab_sola","x_cab_grupo","x_cab_mascota","x_ct_cat_","x_cab_alto","x_cab_bajo","x_cab_bebe","x_cab_raza_","x_ct_prod_","x_cab_mpos_","x_ct_est_"];
+function preloadImgs(){
+  const prio = k => { const i = PRE_ORDEN.findIndex(p => k===p || (p.endsWith("_") && k.startsWith(p))); return i<0 ? 99 : i; };
+  const urls = Object.keys(imgs).sort((a,b)=>prio(a)-prio(b) || a.localeCompare(b))
+    .map(k=>imgs[k]).filter(u=>u && !String(u).startsWith("data:") && !PRE.has(u));
+  let i = 0;
+  const next = ()=>{
+    if(i>=urls.length) return;
+    const u = urls[i++]; if(PRE.has(u)) return next();
+    const im = new Image(); PRE.set(u, im);
+    const done = ()=>{ (im.decode ? im.decode().catch(()=>{}) : Promise.resolve()).then(next); };
+    im.onload = ()=>{ PRE_OK++; done(); }; im.onerror = next; im.src = u;
+  };
+  for(let k=0;k<6;k++) next();
+}
+function registerSW(){
+  try{ if("serviceWorker" in navigator && location.protocol!=="file:"){
+    navigator.serviceWorker.register("sw.js").then(r=>{ try{ r.update(); }catch(e){} }).catch(()=>{});
+  } }catch(e){}
+}
+
 async function loadAll(){
-  // Fotos guardadas como archivos en GitHub (cargan solo cuando se ven)
+  // Fotos guardadas como archivos en GitHub; se precargan de inmediato
   try{ const r=await fetch("img/index.json",{cache:"no-cache"}); if(r.ok){ const idx=await r.json(); Object.keys(idx).forEach(k=>{ imgs[k]=idx[k]; }); } }catch(e){}
+  preloadImgs(); registerSW();
   if(API_URL){
     try{
       BOOT = await api("boot");
@@ -391,6 +416,7 @@ async function loadAll(){
       if(cfg.cartoon) C = clone(cfg.cartoon);
       pin = BOOT.hayClave ? {salt:BOOT.salt} : null;
       Object.entries(BOOT.fotos||{}).forEach(([k,u])=>{ if(u) imgs[k]=u; else delete imgs[k]; });
+      preloadImgs();
     }catch(e){ db=null; BOOT=null; }
   }
   if(!menu){ const raw=lsGet(LS_MENU); menu = raw? JSON.parse(raw) : clone(DEFAULT_MENU); }
@@ -988,7 +1014,7 @@ const imgKey = k => "x_"+String(k).replace(/[^A-Za-z0-9_-]/g,"_");
 const bigBtn = (t,s,attr,key)=>{
   const src = key ? imgs[imgKey(key)] : null;
   const cam = key && editing && imgMode ? `<span class="camrow"><span class="camb" data-img="${esc(key)}">📷 ${src?"Cambiar foto":"Poner foto"}</span>${src?`<span class="camb x" data-imgrm="${esc(key)}">Quitar</span>`:""}</span>` : "";
-  return `<button class="choice2${src?" has-img":""}" ${attr}><span class="t">${esc(t)}</span>${src?`<span class="ci"><img src="${src}" alt="" loading="lazy" decoding="async"></span>`:""}${s?`<span class="s">${esc(s)}</span>`:""}${cam}</button>`;
+  return `<button class="choice2${src?" has-img":""}" ${attr}><span class="t">${esc(t)}</span>${src?`<span class="ci"><img src="${src}" alt="" decoding="sync"></span>`:""}${s?`<span class="s">${esc(s)}</span>`:""}${cam}</button>`;
 };
 function modeToggleHTML(){
   return `<div class="seg" style="max-width:560px;margin:0 auto 20px"><button data-imgm="0" aria-pressed="${!imgMode}">Precios</button><button data-imgm="1" aria-pressed="${imgMode}">Fotos de los botones</button></div>
@@ -1950,7 +1976,7 @@ function drawQuoteList(){
 }
 
 function tileHTML(t,i,n){
-  const pic = imgs[t.id] ? `<img src="${imgs[t.id]}" alt="" decoding="async">` : `<span class="ph">Img</span>`;
+  const pic = imgs[t.id] ? `<img src="${imgs[t.id]}" alt="" decoding="sync">` : `<span class="ph">Img</span>`;
   const inner = `<div class="name">${esc(t.titulo||"Sin nombre")}</div><div class="pic">${pic}</div>
     ${editing?`<div class="tools">
       <button data-tool="edit:${t.id}">Editar</button>
