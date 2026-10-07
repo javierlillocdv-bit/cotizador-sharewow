@@ -489,6 +489,7 @@ async function loadAll(){
   if(!menu){ const raw=lsGet(LS_MENU); menu = raw? JSON.parse(raw) : clone(DEFAULT_MENU); }
   if(!pin){ const raw=lsGet(LS_PIN); if(raw) pin = JSON.parse(raw); }
   if(!db){ const raw=lsGet(LS_PRECIOS); if(raw){ try{ P=JSON.parse(raw); }catch(e){} } const rc=lsGet(LS_CARTOON); if(rc){ try{ C=JSON.parse(rc); }catch(e){} } }
+  if(C && C.cats && !C.movAE){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p21" && !(p.estilos&&p.estilos.length)) p.estilos=["A","B","C","D","E"]; })); C.movAE=true; }
   let changed=false;
   walk(menu.tiles, t=>{ if(t.id==="cab2" && !t.tipo){ t.tipo="grupo"; t.encabezado="Centímetros"; t.tallas=[9,12,15,18]; t.maxPersonas=10; t.fuente="cab1"; changed=true; } });
   walk(menu.tiles, t=>{ if(t.id==="cab1" && !t.tipo){ t.tipo="medidas"; t.encabezado="Centímetros"; t.medidas=defaultMedidas(); changed=true; } });
@@ -1461,7 +1462,7 @@ const DEFAULT_C = {
       CP("p20","Figura con marco y fondo",MM([6,8],[43000,72000]),{tipos:T3P,estilos:["A","B","C","D","E"]})
     ]},
     {id:"k6",nombre:"Figura con movimiento",productos:[
-      CP("p21","Figura cartoon con movimiento",MM([4,6],[34000,88000]),{detalle:"Temblores"})
+      CP("p21","Figura cartoon con movimiento",MM([4,6],[34000,88000]),{detalle:"Temblores",estilos:["A","B","C","D","E"]})
     ]},
     {id:"k7",nombre:"Adorno relieve 3D",productos:[
       CP("p22","Marco de foto en relieve",MM([6,8],[36000,65000]),{tipos:T3M,estilos:["A","B","C","D","E"]}),
@@ -1478,6 +1479,8 @@ function saveCartoon(){
   if(db) queueWrite(()=>api("setDoc",{key:"cartoon", data:C}));
 }
 const CPOS_TXT = {pie:"De pie", sentado:"Sentado o hincado", piso:"En el piso o cuclillas"};
+const CAT_DIRECTO = ["k6"];   // categorías de un solo producto que pasan directo a sus estilos
+const catDirecta = k => k && CAT_DIRECTO.includes(k.id) && k.productos.length===1;
 
 let ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, draft:null};
 function ctReset(){ ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, draft:null}; }
@@ -1511,8 +1514,9 @@ function cartoonHTML(node){
 function cartoonScreenHTML(node){
   const s=ct.scr;
   if(s==="cats") return `<div class="med"><div class="pillhead">¿Qué producto?</div><div class="choices">
-      ${C.cats.map(k=>{ const ds=k.productos.map(prodDesde).filter(okP);
-        return bigBtn(k.nombre, `${k.productos.length} opci${k.productos.length===1?"ón":"ones"}${ds.length?" · desde "+money(Math.min(...ds)):""}`, `data-a="cat" data-v="${esc(k.id)}"`,"ct_cat_"+k.id); }).join("")}
+      ${C.cats.map(k=>{ const ds=k.productos.map(prodDesde).filter(okP); const p0=k.productos[0];
+        const cuenta = catDirecta(k) && p0.estilos.length ? `${p0.estilos.length} estilo${p0.estilos.length>1?"s":""}` : `${k.productos.length} opci${k.productos.length===1?"ón":"ones"}`;
+        return bigBtn(k.nombre, `${cuenta}${ds.length?" · desde "+money(Math.min(...ds)):""}`, `data-a="cat" data-v="${esc(k.id)}"`,"ct_cat_"+k.id); }).join("")}
       </div>${QP_HINT}</div>`;
   if(s==="prods"){
     const k=ctCat(); if(!k) return "";
@@ -1593,12 +1597,13 @@ function bindCartoon(node){
     if(handleImgClick(e)) return;
     const b=e.target.closest("[data-a]"); if(!b || !root.contains(b)) return;
     const a=b.dataset.a, v=b.dataset.v, d=Number(b.dataset.d);
-    if(a==="cat"){ ct.cat=v; ctGo("prods"); }
-    else if(a==="prod"){ ct.prod=v; ct.estilo=null; ct.tipo=null; ct.pos="pie"; ct.acc={};
+    const startProd = id=>{ ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pos="pie"; ct.acc={};
       const p=ctProd(), ms=prodMeds(p);
       if(p.tipos && p.tipos.length && p.estilos && p.estilos.length) ctGo("tipo");
       else if(p.estilos && p.estilos.length) ctGo("estilo");
-      else if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); }
+      else if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); };
+    if(a==="cat"){ ct.cat=v; const k=ctCat(); if(catDirecta(k)) startProd(k.productos[0].id); else ctGo("prods"); }
+    else if(a==="prod"){ startProd(v); }
     else if(a==="ctipo"){ ct.tipo=v; ct.estilo=null; ctGo("estilo"); }
     else if(a==="cest"){ ct.estilo=v; const ms=prodMeds(ctProd());
       if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); }
@@ -1684,7 +1689,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = {
+    const out = { movAE:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
