@@ -308,17 +308,14 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 (function(){
 "use strict";
 const SALT_PREFIX = "sharewow-tienda";
-const LS_MENU="sw-menu-v1", LS_IMG="sw-img-", LS_PIN="sw-pin-v1", LS_TOKEN="sw-unlock", SS_TOKEN="sw-unlock";
+const LS_MENU="sw-menu-v2", LS_IMG="sw-img-", LS_PIN="sw-pin-v1", LS_TOKEN="sw-unlock", SS_TOKEN="sw-unlock";
 const COLORS = ["#0A0B13","#2B3A8F","#7A1F3D","#145C4A","#5B3A8C","#8A5A00"];
 
 const DEFAULT_MENU = {
   nombre:"Sharewow",
   tiles:[
-    {id:"cabina", titulo:"Figuras en cabina", color:"#0A0B13", ancho:false, img:false, hijos:[
-      {id:"cab1", titulo:"1 persona", color:"#0A0B13", ancho:false, img:false, hijos:[]},
-      {id:"cab2", titulo:"2 o más personas", color:"#0A0B13", ancho:false, img:false, hijos:[]}
-    ]},
-    {id:"cartoon", titulo:"Figuras cartoon", color:"#0A0B13", ancho:false, img:false, hijos:[]}
+    {id:"cabina", titulo:"Figuras en cabina", tipo:"cabina", color:"#0A0B13", ancho:false, img:false, hijos:[]},
+    {id:"cartoon", titulo:"Figuras cartoon", tipo:"cartoon", color:"#0A0B13", ancho:false, img:false, hijos:[]}
   ]
 };
 
