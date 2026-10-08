@@ -1532,7 +1532,7 @@ function cartoonScreenHTML(node){
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">¿Qué tipo?</div>
       <p class="small" style="margin:-18px 0 22px;font-size:17px">${esc(p.nombre)} · ${p.tipos.length} tipos</p>
-      <div class="choices">${p.tipos.map(t=>bigBtn(t,`${p.estilos.length} estilos`,`data-a="ctipo" data-v="${esc(t)}"`,"ct_tipo_"+p.id+"_"+t)).join("")}</div></div>`;
+      <div class="choices">${p.tipos.map(t=>bigBtn(t, p.estilos.length ? `${p.estilos.length} estilos` : (prodDesde(p)!=null ? "desde "+money(prodDesde(p)) : ""),`data-a="ctipo" data-v="${esc(t)}"`,"ct_tipo_"+p.id+"_"+t)).join("")}</div></div>`;
   }
   if(s==="estilo"){
     const p=ctProd(); if(!p) return "";
@@ -1544,7 +1544,7 @@ function cartoonScreenHTML(node){
   if(s==="cm"){
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">Centímetros</div>
-      <p class="small" style="margin:-18px 0 22px">${esc(p.nombre)}${ct.estilo?" · estilo "+esc(ct.estilo):""}</p>
+      <p class="small" style="margin:-18px 0 22px">${esc(p.nombre)}${ct.tipo?" · "+esc(ct.tipo):""}${ct.estilo?" · estilo "+esc(ct.estilo):""}</p>
       <div class="ovals">${prodMeds(p).map(m=>`<button class="oval" data-a="ccm" data-v="${m.cm}">${esc(cmTxt(m.cm))}</button>`).join("")}</div></div>`;
   }
   if(s==="res"){
@@ -1599,12 +1599,14 @@ function bindCartoon(node){
     const a=b.dataset.a, v=b.dataset.v, d=Number(b.dataset.d);
     const startProd = id=>{ ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pos="pie"; ct.acc={};
       const p=ctProd(), ms=prodMeds(p);
-      if(p.tipos && p.tipos.length && p.estilos && p.estilos.length) ctGo("tipo");
+      if(p.tipos && p.tipos.length) ctGo("tipo");
       else if(p.estilos && p.estilos.length) ctGo("estilo");
       else if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); };
     if(a==="cat"){ ct.cat=v; const k=ctCat(); if(catDirecta(k)) startProd(k.productos[0].id); else ctGo("prods"); }
     else if(a==="prod"){ startProd(v); }
-    else if(a==="ctipo"){ ct.tipo=v; ct.estilo=null; ctGo("estilo"); }
+    else if(a==="ctipo"){ ct.tipo=v; ct.estilo=null; const p=ctProd(), ms=prodMeds(p);
+      if(p.estilos && p.estilos.length) ctGo("estilo");
+      else if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); }
     else if(a==="cest"){ ct.estilo=v; const ms=prodMeds(ctProd());
       if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); }
     else if(a==="ccm"){ ct.cm=Number(v); ct.pos="pie"; ct.acc={}; ctGo("res"); }
