@@ -2068,11 +2068,13 @@ function mailErrMsg(e){
   if(c==="sin_google") return "El envío automático necesita la conexión con el servidor.";
   if(c==="correo_no_configurado") return "Falta poner el correo y la contraseña de Titan en Netlify.";
   if(c==="smtp_auth") return "Titan rechazó el correo o la contraseña. Revísalos en Netlify.";
-  if(c && String(c).startsWith("smtp")) return "El correo de Titan no respondió. Intenta de nuevo en un momento.";
+  if(c==="smtp_red"||c==="smtp_tiempo") return "No se pudo conectar con el correo de Titan. Intenta de nuevo en un momento.";
+  if(c && String(c).startsWith("smtp")) return "Titan no aceptó el envío ("+c.replace("smtp_","código ")+"). Intenta de nuevo.";
+  if(c==="respuesta_invalida") return "El servidor tardó demasiado en responder. Intenta de nuevo.";
   if(c==="sin_conexion") return "No hay internet para enviar el correo.";
   if(c==="correo_invalido") return "El correo del cliente no es válido.";
   if(c==="no_autorizado") return "La sesión venció: bloquea y vuelve a entrar con la clave.";
-  return "No se pudo enviar el correo.";
+  return "No se pudo enviar el correo." + (c ? " ("+c+")" : "");
 }
 function dlErrMsg(e){
   const c=e&&e.code;

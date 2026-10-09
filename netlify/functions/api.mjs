@@ -21,6 +21,7 @@ const CORS = {
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 const store = () => getStore({ name: "cotizador", consistency: "strong" });
 const sha = t => crypto.createHash("sha256").update(t, "utf8").digest("hex");
+const ocultar = x => typeof x === "string" ? x.replace(/[^\s<>:@]+@[^\s<>]+/g, "***@***") : Array.isArray(x) ? x.map(ocultar) : x;
 const env = k => (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get(k)) || process.env[k] || "";
 
 async function acceso(st) {
@@ -134,9 +135,10 @@ async function atender(req, origen) {
     const rec = req.rec || {};
     if (!rec.correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rec.correo)) throw new Error("correo_invalido");
     if (!req.pdf) throw new Error("sin_pdf");
-    const usuario = env("TITAN_USUARIO").trim(), clave = env("TITAN_CLAVE");
+    const usuario = env("TITAN_USUARIO").trim(), clave = env("TITAN_CLAVE").trim();
     if (!usuario || !clave) throw new Error("correo_no_configurado");
     const e = req.empresa || {};
+    try {
     await sendMail({
       host: env("SMTP_HOST") || "smtp.titan.email",
       port: Number(env("SMTP_PORT") || 465),
@@ -147,6 +149,10 @@ async function atender(req, origen) {
       html: htmlCorreo(rec, e),
       attachment: { base64: req.pdf, filename: req.filename || ("Cotizacion " + rec.numero + ".pdf"), type: "application/pdf" }
     });
+    } catch (err) {
+      await st.setJSON("diag/ultimo", { fecha: new Date().toISOString(), codigo: String(err.message || err), detalle: ocultar(err.detail || ""), pasos: ocultar(err.pasos || []) }).catch(() => {});
+      throw err;
+    }
     await guardarCotizacion(st, rec, true);
     return {};
   }
@@ -168,9 +174,24 @@ export default async (request) => {
       return new Response(r.data, { headers: { ...CORS, "Content-Type": (r.metadata && r.metadata.type) || "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable" } });
     }
     // Estado (para revisar que todo esté bien conectado; no muestra datos privados)
-    let blobs = false;
-    try { await store().get("acceso"); blobs = true; } catch (e) {}
-    return json({ ok: true, app: "cotizador-sharewow", guardado: blobs, correo: !!(env("TITAN_USUARIO") && env("TITAN_CLAVE")) });
+    let blobs = false, ultimo = null;
+    try { await store().get("acceso"); blobs = true; ultimo = await store().get("diag/ultimo", { type: "json" }); } catch (e) {}
+    const out = { ok: true, app: "cotizador-sharewow", guardado: blobs, correo: !!(env("TITAN_USUARIO") && env("TITAN_CLAVE")), ultimoError: ultimo };
+    if (url.searchParams.get("revisar") === "correo") {
+      // Prueba de conexión con Titan: se conecta e inicia sesión, sin enviar nada (máx. 1 vez cada 20 s)
+      const st = store(); const ant = await st.get("diag/probado", { type: "json" }).catch(() => null);
+      if (ant && Date.now() - ant.t < 20000) out.prueba = "espera unos segundos";
+      else {
+        await st.setJSON("diag/probado", { t: Date.now() }).catch(() => {});
+        const u = env("TITAN_USUARIO").trim();
+        out.usuario = u ? u.replace(/^(.).*(@.*)$/, "$1***$2") : "(vacío)";
+        out.largoClave = (env("TITAN_CLAVE") || "").length;
+        out.claveConEspacios = /^\s|\s$/.test(env("TITAN_CLAVE") || "");
+        try { const r = await sendMail({ host: env("SMTP_HOST") || "smtp.titan.email", port: Number(env("SMTP_PORT") || 465), user: u, pass: env("TITAN_CLAVE").trim(), insecure: env("SMTP_INSEGURO") === "1", soloProbar: true }); out.prueba = "ok"; out.pasos = ocultar(r.pasos); }
+        catch (e) { out.prueba = String(e.message || e); out.detalle = ocultar(e.detail || ""); out.pasos = ocultar(e.pasos || []); }
+      }
+    }
+    return json(out);
   }
 
   let req;

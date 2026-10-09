@@ -30,38 +30,44 @@ function reader(socket) {
 
 export async function sendMail(opts) {
   const {
-    host = "smtp.titan.email", port = 465, user, pass, insecure = false,
+    host = "smtp.titan.email", port = 465, user, pass, insecure = false, soloProbar = false,
     fromName = "Sharewow", to, bcc = [], replyTo, subject, html, attachment
   } = opts;
   if (!user || !pass) throw new Error("correo_no_configurado");
+  const pasos = [];
   const from = cleanAddr(user);
   const rcpts = [cleanAddr(to), ...bcc.map(cleanAddr)].filter(Boolean);
 
   const socket = tls.connect({ host, port, servername: host, rejectUnauthorized: !insecure });
-  socket.setTimeout(20000, () => socket.destroy(new Error("smtp_tiempo")));
+  socket.setTimeout(8000, () => socket.destroy(new Error("smtp_tiempo")));
   const next = reader(socket);
   const write = s => socket.write(s + "\r\n");
-  const expect = async (cmd, ok) => {
+  let paso = "conectar";
+  const expect = async (cmd, ok, nombre) => {
+    if (nombre) paso = nombre;
     if (cmd != null) write(cmd);
     const r = await next();
-    if (!ok.includes(r.code)) { const e = new Error(r.code === 535 ? "smtp_auth" : "smtp_" + r.code); e.detail = r.lines.join(" | "); throw e; }
+    pasos.push(paso + ": " + r.lines.join(" | ").slice(0, 200));
+    if (!ok.includes(r.code)) { const e = new Error(r.code === 535 || (paso === "auth" && r.code >= 500) ? "smtp_auth" : "smtp_" + r.code); e.detail = paso + " → " + r.lines.join(" | "); e.pasos = pasos; throw e; }
     return r;
   };
   try {
-    await new Promise((res, rej) => { socket.once("secureConnect", res); socket.once("error", rej); });
-    await expect(null, [220]);
-    const ehlo = await expect("EHLO sharewow.cl", [250]);
-    const caps = ehlo.lines.join(" ").toUpperCase();
-    if (caps.includes("AUTH") && /AUTH[ =][^\r\n]*PLAIN/.test(caps)) {
-      await expect("AUTH PLAIN " + Buffer.from(`\0${user}\0${pass}`, "utf8").toString("base64"), [235]);
+    await new Promise((res, rej) => { socket.once("secureConnect", res); socket.once("error", e => { e.detail = "conectar → " + e.message; e.pasos = pasos; rej(e); }); });
+    await expect(null, [220], "saludo");
+    const ehlo = await expect("EHLO sharewow.cl", [250], "ehlo");
+    const caps = ehlo.lines.map(l => l.slice(4)).join("\n").toUpperCase();
+    const authLine = caps.split("\n").find(l => /^AUTH[ =]/.test(l)) || "";
+    if (/\bLOGIN\b/.test(authLine) && !/\bPLAIN\b/.test(authLine)) {
+      await expect("AUTH LOGIN", [334], "auth");
+      await expect(b64(user), [334], "auth");
+      await expect(b64(pass), [235], "auth");
     } else {
-      await expect("AUTH LOGIN", [334]);
-      await expect(b64(user), [334]);
-      await expect(b64(pass), [235]);
+      await expect("AUTH PLAIN " + Buffer.from(`\0${user}\0${pass}`, "utf8").toString("base64"), [235], "auth");
     }
-    await expect(`MAIL FROM:<${from}>`, [250]);
-    for (const r of rcpts) await expect(`RCPT TO:<${r}>`, [250, 251]);
-    await expect("DATA", [354]);
+    if (soloProbar) { try { write("QUIT"); } catch (e) {} return { ok: true, pasos }; }
+    await expect(`MAIL FROM:<${from}>`, [250], "remitente");
+    for (const r of rcpts) await expect(`RCPT TO:<${r}>`, [250, 251], "destinatario");
+    await expect("DATA", [354], "datos");
 
     const boundary = "sw_" + crypto.randomBytes(12).toString("hex");
     const head = [
@@ -85,9 +91,14 @@ export async function sendMail(opts) {
     // "dot-stuffing" por seguridad
     body = body.split("\r\n").map(l => l.startsWith(".") ? "." + l : l).join("\r\n");
     socket.write(body);
-    await expect(".", [250]);
+    await expect(".", [250], "envio");
     try { write("QUIT"); } catch (e) {}
-    return { ok: true };
+    return { ok: true, pasos };
+  } catch (e) {
+    if (!e.pasos) e.pasos = pasos;
+    if (!e.detail) e.detail = paso + " → " + (e.message || e);
+    if (e.message && !String(e.message).startsWith("smtp") && e.message !== "correo_no_configurado") { e.detail = paso + " → " + e.message; e.message = "smtp_red"; }
+    throw e;
   } finally {
     setTimeout(() => { try { socket.destroy(); } catch (e) {} }, 50);
   }
