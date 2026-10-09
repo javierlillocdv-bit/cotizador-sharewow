@@ -20,7 +20,7 @@
 <style>
 :root{
   --bg:#FFFFFF;--surface:#FFFFFF;--ink:#16171D;--muted:#62657A;--line:#DCE3DD;
-  --green:#3BB33E;--green-dark:#2B8F2F;--green-ink:#FFFFFF;--frog:#E6F6E7;--frog-eye:#FFFFFF;--deco:#3BB33E;--head-bg:rgba(255,255,255,.86);
+  --green:#3BB33E;--green-dark:#2B8F2F;--green-ink:#FFFFFF;--frog:#E6F6E7;--frog-eye:#FFFFFF;--deco:#3BB33E;--head-bg:rgba(255,255,255,.97);
   --tile:#0A0B13;--tile-box:#000000;--tile-ink:#FFFFFF;
   --accent:#3B5BFF;--accent-ink:#FFFFFF;--danger:#D2335F;--ok:#14966F;
   box-sizing:border-box;
@@ -30,13 +30,13 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0F1512;--surface:#1A221D;--ink:#F1F4F2;--muted:#A3B0A7;--line:#2C3A30;
-    --green:#4CC94F;--green-dark:#3BB33E;--green-ink:#0B130D;--frog:#16261A;--frog-eye:#0F1512;--deco:#3BB33E;--head-bg:rgba(15,21,18,.86);
+    --green:#4CC94F;--green-dark:#3BB33E;--green-ink:#0B130D;--frog:#16261A;--frog-eye:#0F1512;--deco:#3BB33E;--head-bg:rgba(15,21,18,.97);
     --accent:#7A90FF;--accent-ink:#0B0C14;--danger:#FF7A9C;--ok:#3CD3AE;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0F1512;--surface:#1A221D;--ink:#F1F4F2;--muted:#A3B0A7;--line:#2C3A30;
-  --green:#4CC94F;--green-dark:#3BB33E;--green-ink:#0B130D;--frog:#16261A;--frog-eye:#0F1512;--deco:#3BB33E;--head-bg:rgba(15,21,18,.86);
+  --green:#4CC94F;--green-dark:#3BB33E;--green-ink:#0B130D;--frog:#16261A;--frog-eye:#0F1512;--deco:#3BB33E;--head-bg:rgba(15,21,18,.97);
   --accent:#7A90FF;--accent-ink:#0B0C14;--danger:#FF7A9C;--ok:#3CD3AE;
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -50,7 +50,7 @@ button{cursor:pointer}
 .hidden{display:none!important}
 
 /* Barra superior */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--head-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:0 0 18px 18px;
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--head-bg);border-radius:0 0 18px 18px;
   display:flex;align-items:center;gap:10px;padding:14px 20px;max-width:1200px;margin:0 auto}
 .top h1{flex:1;margin:0;font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700;font-size:30px;line-height:1.1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -297,7 +297,7 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .choice2 img,.tile img{pointer-events:none;-webkit-user-drag:none;-webkit-touch-callout:none}
 .qp-press{transform:scale(.96)!important;transition:transform .45s ease!important}
 #qp{width:min(680px,calc(100vw - 24px));overflow:hidden}
-#qp::backdrop{background:rgba(5,8,6,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#qp::backdrop{background:rgba(5,8,6,.66)}
 .qp{display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
 .qp-head{display:flex;gap:14px;align-items:center;padding:18px 16px 14px 18px;border-bottom:1px solid var(--line)}
 .qp-thumb{width:64px;height:64px;border-radius:14px;object-fit:cover;object-position:center 30%;background:#fff;flex:none}
@@ -424,7 +424,7 @@ function prePump(){
     const u = preQ.shift(); preActive++;
     const im = new Image(); im.decoding = "sync";
     const fin = ok=>{ preActive--; PRE_DONE++; if(ok){ PRE_OK++; PRE.set(u, im); } prePump(); };
-    im.onload = ()=>{ (im.decode ? im.decode().catch(()=>{}) : Promise.resolve()).then(()=>fin(true)); };
+    im.onload = ()=>fin(true);
     im.onerror = ()=>fin(false);
     im.src = u;
   }
@@ -463,6 +463,10 @@ function waitFotos(maxMs){
   });
 }
 async function enterApp(){ await waitFotos(40000); renderApp(); }
+// Al volver a la app (iPad), fuerza a redibujar toda la pantalla para que no quede a medias
+function repaint(){ try{ const r=document.documentElement; r.style.display="none"; void r.offsetHeight; r.style.display=""; }catch(e){} }
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") requestAnimationFrame(repaint); });
+window.addEventListener("pageshow", e=>{ if(e.persisted) requestAnimationFrame(repaint); });
 function registerSW(){
   try{ if("serviceWorker" in navigator && location.protocol!=="file:"){
     navigator.serviceWorker.register("sw.js").then(r=>{ try{ r.update(); }catch(e){} }).catch(()=>{});
