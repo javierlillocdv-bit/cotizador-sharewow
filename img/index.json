@@ -60,6 +60,8 @@
 "x_ct_est_p18_Monstruo": "img/x_ct_est_p18_Monstruo.jpg?v=23fd7699",
 "x_ct_est_p20_1_persona_A": "img/x_ct_est_p20_1_persona_A.jpg?v=baa03b0d",
 "x_ct_est_p20_1_persona_B": "img/x_ct_est_p20_1_persona_B.jpg?v=0a6db812",
+"x_ct_est_p20_1_persona_con_accesorios_A": "img/x_ct_est_p20_1_persona_con_accesorios_A.jpg?v=c6e0a9d7",
+"x_ct_est_p20_1_persona_con_accesorios_B": "img/x_ct_est_p20_1_persona_con_accesorios_B.jpg?v=458f5785",
 "x_ct_est_p21_A": "img/x_ct_est_p21_A.jpg?v=c13fec70",
 "x_ct_est_p21_B": "img/x_ct_est_p21_B.jpg?v=fa17494f",
 "x_ct_est_p21_C": "img/x_ct_est_p21_C.jpg?v=cb85032c",
@@ -119,5 +121,6 @@
 "x_ct_tipo_p19b_1_persona___1_mascota": "img/x_ct_tipo_p19b_1_persona___1_mascota.jpg?v=709cc905",
 "x_ct_tipo_p19b_1_persona_con_accesorios": "img/x_ct_tipo_p19b_1_persona_con_accesorios.jpg?v=5f90c214",
 "x_ct_tipo_p19b_2_personas": "img/x_ct_tipo_p19b_2_personas.jpg?v=dfe4bc2b",
+"x_ct_tipo_p20_1_persona": "img/x_ct_tipo_p20_1_persona.jpg?v=91ff8616",
 "x_ct_tipo_p22_1_persona": "img/x_ct_tipo_p22_1_persona.jpg?v=e96049ea"
 }
