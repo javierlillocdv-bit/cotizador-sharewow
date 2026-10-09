@@ -6,7 +6,7 @@
  * Variables que se ponen en Netlify (Site configuration → Environment variables):
  *   TITAN_USUARIO  correo de Titan desde el que se envía (ej. Plazalosdominicos@sharewow.cl)
  *   TITAN_CLAVE    contraseña de ese correo
- *   CLAVE_APP      (opcional) clave numérica inicial de la app, solo se usa si aún no hay clave
+ *   CLAVE_APP      (opcional) patrón inicial como números de los puntos (1 2 3 / 4 5 6 / 7 8 9), solo si aún no hay clave
  */
 import { getStore } from "@netlify/blobs";
 import crypto from "node:crypto";
@@ -26,7 +26,7 @@ const env = k => (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.g
 async function acceso(st) {
   let a = await st.get("acceso", { type: "json" });
   const inicial = env("CLAVE_APP").trim();
-  if (!a && /^\d{4,8}$/.test(inicial)) {
+  if (!a && /^\d{4,9}$/.test(inicial)) {
     const salt = crypto.randomBytes(6).toString("hex");
     a = { salt, hash: sha(PREFIJO_CLAVE + salt + inicial) };
     await st.setJSON("acceso", a);

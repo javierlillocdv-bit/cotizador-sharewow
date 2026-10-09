@@ -12,6 +12,6 @@ Página para sacar precios y generar cotizaciones de Sharewow (figuras en cabina
   cuando cambia algo de esta parte.
 
 Variables en Netlify (Site configuration → Environment variables): `TITAN_USUARIO`, `TITAN_CLAVE`
-y, opcional, `CLAVE_APP` (clave numérica inicial de la app).
+y, opcional, `CLAVE_APP` (patrón inicial como números de los puntos: 1 2 3 / 4 5 6 / 7 8 9).
 
 Los datos de los clientes, la clave y la contraseña del correo no se guardan en este repositorio.
