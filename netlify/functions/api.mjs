@@ -51,7 +51,8 @@ async function guardarCotizacion(st, rec, enviada) {
   if (!rec || !rec.id || !/^[A-Za-z0-9_-]{1,80}$/.test(rec.id)) throw new Error("bad_request");
   const k = "cot/" + rec.id;
   const prev = await st.get(k, { type: "json" }).catch(() => null);
-  const r = { ...rec, _enviada: enviada ? Date.now() : (prev && prev._enviada) || null };
+  const r = { ...rec, _enviada: enviada ? Date.now() : (prev && prev._enviada) || null,
+    _pk: rec._pk || (prev && prev._pk) || undefined, pdfUrl: rec.pdfUrl || (prev && prev.pdfUrl) || undefined };
   await st.setJSON(k, r);
 }
 
@@ -125,6 +126,19 @@ async function atender(req, origen) {
     await st.delete("foto/" + req.key).catch(() => {});
     return {};
   }
+  if (a === "pdf") {
+    const rec = req.rec || {};
+    if (!rec.id || !/^[A-Za-z0-9_-]{1,80}$/.test(rec.id) || !req.pdf) throw new Error("bad_request");
+    const bytes = Buffer.from(String(req.pdf), "base64");
+    if (!bytes.length || bytes.length > 8e6) throw new Error("pdf_invalido");
+    const prev = await st.get("cot/" + rec.id, { type: "json" }).catch(() => null);
+    const k = (prev && prev._pk) || crypto.randomBytes(12).toString("hex");
+    const nombre = String(req.filename || ("Cotizacion " + (rec.numero || rec.id) + ".pdf")).replace(/[\r\n"]/g, "");
+    await st.set("pdf/" + rec.id, bytes, { metadata: { k, nombre } });
+    const url = `${origen}/api/pdf?id=${encodeURIComponent(rec.id)}&k=${k}`;
+    await st.setJSON("cot/" + rec.id, { ...(prev || rec), _pk: k, pdfUrl: url });
+    return { url, k };
+  }
   if (a === "quotes") return { quotes: await listarCotizaciones(st) };
   if (a === "saveQuote") { await guardarCotizacion(st, req.rec, false); return {}; }
   if (a === "delQuote") {
@@ -173,6 +187,17 @@ export default async (request) => {
       if (!r) return new Response("not found", { status: 404, headers: CORS });
       return new Response(r.data, { headers: { ...CORS, "Content-Type": (r.metadata && r.metadata.type) || "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable" } });
     }
+    // PDF de una cotización (enlace privado con clave aleatoria, para WhatsApp)
+    if (url.pathname.endsWith("/api/pdf")) {
+      const id = url.searchParams.get("id") || "", k = url.searchParams.get("k") || "";
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !/^[a-f0-9]{24}$/.test(k)) return new Response("No encontrada", { status: 404, headers: CORS });
+      const r = await store().getWithMetadata("pdf/" + id, { type: "arrayBuffer" });
+      if (!r || !r.metadata || r.metadata.k !== k) return new Response("No encontrada", { status: 404, headers: CORS });
+      const nombre = r.metadata.nombre || "Cotizacion.pdf";
+      return new Response(r.data, { headers: { ...CORS, "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${nombre.replace(/[^\x20-\x7e]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(nombre)}`,
+        "Cache-Control": "private, max-age=3600" } });
+    }
     // Estado (para revisar que todo esté bien conectado; no muestra datos privados)
     let blobs = false, ultimo = null;
     try { await store().get("acceso"); blobs = true; ultimo = await store().get("diag/ultimo", { type: "json" }); } catch (e) {}
@@ -207,4 +232,4 @@ export default async (request) => {
   }
 };
 
-export const config = { path: ["/api", "/api/foto"] };
+export const config = { path: ["/api", "/api/foto", "/api/pdf"] };
