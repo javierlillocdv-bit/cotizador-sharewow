@@ -1812,6 +1812,7 @@ const LOGO_PDF = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgM
 const LOGO_RATIO = 709/1100;
 const DEFAULT_EMP = {
   razon:"SHAREWOW CHILE SPA",
+  rut:"78.136.906-3",
   dir1:"Av. Padre Hurtado Sur 875, Las Condes",
   dir2:"Mall Plaza Los Dominicos - Local B-3008",
   web:"www.sharewow.cl",
@@ -1910,7 +1911,12 @@ function buildPDF(info, data){
 
     // Datos de la empresa (arriba del cliente)
     doc.setTextColor(...INK);
-    if(E.razon){ doc.setFont("helvetica","bold"); doc.setFontSize(F(11.5)); doc.text(E.razon, M, y); y+=F(5.4); }
+    if(E.razon||E.rut){ doc.setFont("helvetica","bold"); doc.setFontSize(F(11.5));
+      if(E.razon) doc.text(E.razon, M, y);
+      // RUT de la empresa al lado de la razón social
+      if(E.rut){ const rx = E.razon ? M+doc.getTextWidth(E.razon)+F(6) : M; doc.setTextColor(...MUTED); doc.text("RUT:", rx, y);
+        const lx=rx+doc.getTextWidth("RUT: "); doc.setFont("helvetica","normal"); doc.setTextColor(...INK); doc.text(String(E.rut), lx, y); }
+      y+=F(5.4); }
     doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5));
     [E.dir1,E.dir2].filter(Boolean).forEach(t=>{ doc.text(t, M, y); y+=F(5); });
     if(String(info.vendedor||"").trim()){ y+=G(1.5); doc.setFont("helvetica","bold"); doc.setTextColor(...MUTED); doc.text("Vendedor:", M, y);
@@ -2121,7 +2127,7 @@ function mailBody(rec){
   L.push(""); L.push(`TOTAL: ${pdfMoney(rec.total)}`); L.push("");
   if(rec.vigencia) L.push(`Esta cotización tiene una validez de ${rec.vigencia} días, hasta el ${fechaLarga(venceMs(rec))}.`);
   if(rec.notas) L.push(`Notas: ${rec.notas}`);
-  L.push(""); L.push("Saludos,"); if(rec.vendedor) L.push(rec.vendedor); [E.razon,E.dir1,E.dir2,E.web,E.correo,E.telefono].filter(Boolean).forEach(x=>L.push(x));
+  L.push(""); L.push("Saludos,"); if(rec.vendedor) L.push(rec.vendedor); [E.razon, E.rut&&`RUT: ${E.rut}`, E.dir1,E.dir2,E.web,E.correo,E.telefono].filter(Boolean).forEach(x=>L.push(x));
   return L.join("\n");
 }
 /* ---------- WhatsApp ---------- */
@@ -2325,7 +2331,7 @@ function openSettings(){
     <label class="lbl" for="sName">Nombre en la pantalla de inicio</label>
     <input class="inp" id="sName" value="${esc(menu.nombre)}">
     <span class="lbl">Datos que salen en la cotización PDF</span>
-    ${[["razon","Razón social"],["dir1","Dirección"],["dir2","Local / mall"],["web","Página web"],["correo","Correo"],["telefono","Teléfono"],["vigencia","Vigencia (días)"]]
+    ${[["razon","Razón social"],["rut","RUT"],["dir1","Dirección"],["dir2","Local / mall"],["web","Página web"],["correo","Correo"],["telefono","Teléfono"],["vigencia","Vigencia (días)"]]
       .map(([k,ph])=>`<input class="inp" data-ek="${k}" value="${esc(empresa()[k]||"")}" placeholder="${esc(ph)}" style="margin-top:8px" aria-label="${esc(ph)}">`).join("")}
     <span class="lbl">Puntos clave (solo cotizaciones de cabina)</span>
     ${[["captura","Proceso de Captura"],["reserva","Reserva de Fecha"],["entrega","Disponibilidad de Entrega"]]
