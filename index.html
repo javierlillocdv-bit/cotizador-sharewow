@@ -687,8 +687,8 @@ function renderApp(){
     <button class="btn icon ${path.length?"":"hidden"}" id="back" aria-label="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="titles"><h1>${esc(node?node.titulo:menu.nombre)}</h1>${path.length?`<div class="crumbs">${names.slice(0,-1).map(esc).join(" › ")}</div>`:""}</div>
     ${path.length?`<button class="homebtn" id="goHome" aria-label="Volver al inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Volver al inicio</span></button>`:""}
-    ${editing?`<button class="btn" id="settings">Ajustes</button>`:""}
-    <button class="btn ${editing?"on":""}" id="edit">${editing?"Listo":"Editar"}</button>
+    ${PERMITIR_EDITAR?`${editing?`<button class="btn" id="settings">Ajustes</button>`:""}
+    <button class="btn ${editing?"on":""}" id="edit">${editing?"Listo":"Editar"}</button>`:""}
     <button class="btn icon" id="lock" aria-label="Bloquear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
   </header>
   <main class="${editing?"editing":""}">
@@ -697,7 +697,7 @@ function renderApp(){
       ${editing?`<button class="add-tile" id="addTile">+ Añadir botón</button>`:""}</div>${!path.length&&!editing?`<button class="gen" id="verCots" style="display:block;margin:34px auto 0;font-size:clamp(30px,4.4vw,44px);padding:20px 56px">Ver cotizaciones</button>`:""}`
       : `<div class="empty">Aquí todavía no hay nada.<br>Toca <b>Editar</b> para añadir botones.</div>`}
   </main>`;
-  document.getElementById("edit").addEventListener("click",()=>{editing=!editing;med.draft=null;grp.draft=null;grp.accDraft=null;fx.draft=null;cab.draft=null;ct.draft=null;imgMode=false;renderApp();});
+  const editBtn=document.getElementById("edit"); if(editBtn) editBtn.addEventListener("click",()=>{editing=!editing;med.draft=null;grp.draft=null;grp.accDraft=null;fx.draft=null;cab.draft=null;ct.draft=null;imgMode=false;renderApp();});
   document.getElementById("lock").addEventListener("click",lockNow);
   const gh=document.getElementById("goHome"); if(gh) gh.addEventListener("click",()=>{ path=[]; editing=false; imgMode=false; med.sel=null; med.draft=null; med.acc={}; med.accOpen=false; fx.draft=null; grpReset(); cabReset(); ctReset(); renderApp(); window.scrollTo(0,0); });
   const bk=document.getElementById("back"); bk.addEventListener("click",()=>{
@@ -1179,6 +1179,8 @@ function calcMascota(q){
 
 /* ---- Piezas de interfaz ---- */
 let imgMode=false;
+// La opción de editar (precios, botones, fotos, ajustes) está desactivada para que nadie la cambie por error.
+const PERMITIR_EDITAR = false;
 const imgKey = k => "x_"+String(k).replace(/[^A-Za-z0-9_-]/g,"_");
 const bigBtn = (t,s,attr,key)=>{
   const src = key ? imgs[imgKey(key)] : null;
@@ -2003,7 +2005,6 @@ function openQuoteForm(getData){
     go.textContent="Generando PDF…";
     let dlMsg="", mailMsg="", mailOk=false;
     try{ await downloadRec(rec); }catch(e){ dlMsg=dlErrMsg(e); }
-    if(db){ go.textContent="Preparando enlace…"; try{ await uploadPdf(rec); }catch(e){} }
     if(correo && db){ go.textContent="Enviando correo…"; try{ await emailRec(rec); mailOk=true; }catch(e){ mailMsg=mailErrMsg(e); } }
     dlgBody.innerHTML = `<h3>${saved?"Cotización guardada":"Cotización lista"}</h3>
       <p>${esc(cliente)} · <b>${money(data.total)}</b> · N° ${esc(numero)}</p>
@@ -2011,7 +2012,6 @@ function openQuoteForm(getData){
       ${mailOk?`<p class="ok-txt">✓ Enviada automáticamente a <b>${esc(correo)}</b></p>`:""}
       ${mailMsg?`<p class="warn-txt">${esc(mailMsg)}</p>`:""}
       ${correo&&!db?`<p class="small">Para mandarla a <b>${esc(correo)}</b>, toca Enviar por correo: se abre tu app de correo con el mensaje listo. Adjunta el PDF que descargaste.</p>`:""}
-      <div class="row-btns" style="margin-bottom:10px"><a class="btn wa" id="qWa" href="${esc(waLink(rec))}" target="_blank" rel="noopener">${WA_ICON}Enviar por WhatsApp</a></div>
       <div class="row-btns">${correo&&!mailOk?`<button class="btn" id="qSend">${db?"Reintentar envío":"Enviar por correo"}</button>`:""}<button class="btn primary" id="qDone">Listo</button></div>`;
     const sb=document.getElementById("qSend"); if(sb) sb.onclick=async ()=>{
       if(!db){ openMail(rec); return; }
@@ -2192,7 +2192,6 @@ function drawQuoteList(){
         ${vence!=null?`<div class="qbadge ${ok?"ok":"off"}">${ok?"Vigente hasta "+fechaCorta(vence):"Vencida el "+fechaCorta(vence)}</div>`:""}
         <div class="qbtns"><button class="btn primary" data-qdl="${esc(r.id)}">Descargar PDF</button>
           ${r.correo?`<button class="btn" data-qmail="${esc(r.id)}">Enviar por correo</button>`:""}
-          ${r.pdfUrl||!db?`<a class="btn wa" href="${esc(waLink(r))}" target="_blank" rel="noopener">${WA_ICON}WhatsApp</a>`:`<button class="btn wa" data-qwa="${esc(r.id)}">${WA_ICON}WhatsApp</button>`}
           <button class="btn qdel" data-qdel="${esc(r.id)}">Borrar</button></div></div>`; }).join("")
     : `<p class="empty">No hay cotizaciones con ese nombre.</p>`);
 }
