@@ -1860,115 +1860,141 @@ const pdfMoney = n => n==null ? "Consultar" : "$" + Math.round(Number(n)).toLoca
 
 function buildPDF(info, data){
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:"mm", format:"a4"});
   const E=empresa(), W=210, M=18, GREEN=[59,179,62], GTXT=[84,160,64], INK=[22,23,29], MUTED=[98,101,122];
-  const FOOT=262;
-  let y=14;
-  const newPage=()=>{ footer(); doc.addPage(); y=M; };
-  const need=h=>{ if(y+h > FOOT-6) newPage(); };
-  function footer(){
-    doc.setDrawColor(...GREEN); doc.setLineWidth(0.6); doc.line(0, FOOT, W, FOOT);
-    doc.setTextColor(...GTXT); doc.setFont("helvetica","normal");
-    let fy=FOOT+9;
-    if(E.web){ doc.setFontSize(15); doc.text(E.web, W/2, fy, {align:"center"}); fy+=6.5; }
-    if(E.correo){ doc.setFontSize(11); doc.text(E.correo, W/2, fy, {align:"center"}); const tw=doc.getTextWidth(E.correo); doc.setDrawColor(...GTXT); doc.setLineWidth(0.25); doc.line(W/2-tw/2, fy+0.8, W/2+tw/2, fy+0.8); fy+=6.5; }
-    if(E.telefono){ doc.setFontSize(14); doc.text(E.telefono, W/2, fy, {align:"center"}); }
-  }
-  // Encabezado: logo + título
-  const lw=62, lh=lw*LOGO_RATIO;
-  try{ doc.addImage(LOGO_PDF,"JPEG",M-2,y,lw,lh); }catch(e){}
-  doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.setTextColor(...GREEN);
-  doc.text("COTIZACIÓN", W-M, y+12, {align:"right"});
-  doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...INK);
-  doc.text(`N° ${info.numero}`, W-M, y+19, {align:"right"});
-  doc.text(info.fecha, W-M, y+24.5, {align:"right"});
-  if(info.validaHasta){ doc.setFontSize(9.5); doc.setTextColor(...MUTED); doc.text(`Válida hasta el ${info.validaHasta}`, W-M, y+30, {align:"right"}); }
-  y += lh + 6;
-  doc.setDrawColor(...GREEN); doc.setLineWidth(0.8); doc.line(M, y, W-M, y); y += 8;
-
-  // Datos de la empresa (arriba del cliente)
-  doc.setTextColor(...INK);
-  if(E.razon){ doc.setFont("helvetica","bold"); doc.setFontSize(11.5); doc.text(E.razon, M, y); y+=5.4; }
-  doc.setFont("helvetica","normal"); doc.setFontSize(10.5);
-  [E.dir1,E.dir2].filter(Boolean).forEach(t=>{ doc.text(t, M, y); y+=5; });
-  if(String(info.vendedor||"").trim()){ y+=1.5; doc.setFont("helvetica","bold"); doc.setTextColor(...MUTED); doc.text("Vendedor:", M, y);
-    doc.setFont("helvetica","normal"); doc.setTextColor(...INK); doc.text(String(info.vendedor), M+24, y); y+=5; }
-  y += 5;
-
-  // Cliente
-  const fila=(lbl,val)=>{ if(!String(val||"").trim()) return; doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(...MUTED); doc.text(lbl, M, y);
-    doc.setFont("helvetica","normal"); doc.setTextColor(...INK); doc.text(String(val), M+24, y); y+=6; };
-  fila("Cliente:", info.cliente); fila("Teléfono:", info.contacto); fila("Correo:", info.correo);
-  y += 3;
-
-  // Producto y tabla
-  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(...INK);
-  doc.text(data.titulo, M, y); y += 6;
-  doc.setFillColor(...GREEN); doc.rect(M, y, W-2*M, 9, "F");
-  doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(255,255,255);
-  doc.text("Descripción", M+4, y+6); doc.text("Valor", W-M-4, y+6, {align:"right"}); y += 9;
-  doc.setFont("helvetica","normal"); doc.setFontSize(10.5);
-  data.lines.forEach((ln,i)=>{
-    const x0 = M+4+(ln.ind?6:0);
-    const txt = doc.splitTextToSize((ln.ind?"+ ":"")+ln.d, W-2*M-48-(ln.ind?6:0));
-    const h = Math.max(8, txt.length*5+3);
-    need(h);
-    if(i%2===1){ doc.setFillColor(240,248,241); doc.rect(M, y, W-2*M, h, "F"); }
-    doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...(ln.ind?MUTED:INK));
-    doc.text(txt, x0, y+5.5);
-    doc.text(pdfMoney(ln.v), W-M-4, y+5.5, {align:"right"});
-    y += h;
-  });
-  doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y); y += 5;
-
-  // Total
-  need(22);
-  doc.setFillColor(...GREEN); doc.roundedRect(W-M-80, y, 80, 16, 3, 3, "F");
-  doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(255,255,255);
-  doc.text("TOTAL", W-M-74, y+10.2);
-  doc.setFontSize(16); doc.text(pdfMoney(data.total), W-M-5, y+10.8, {align:"right"});
-  doc.setTextColor(...INK);
-  y += 16 + 10;
-
-  // Notas
-  if(String(info.notas||"").trim()){
-    need(14);
-    doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(...INK); doc.text("Notas", M, y); y+=5.5;
-    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...MUTED);
-    const t=doc.splitTextToSize(info.notas, W-2*M); need(t.length*4.8); doc.text(t, M, y); y+=t.length*4.8+6;
-  }
-
-  // Puntos clave
+  // Puntos clave (se calculan una vez)
   const puntos=[];
   if(data.cabina && E.captura) puntos.push(["Proceso de Captura:", E.captura]);
   if(data.cabina && E.reserva) puntos.push(["Reserva de Fecha:", E.reserva]);
   if(data.cabina && E.entrega) puntos.push(["Disponibilidad de Entrega:", E.entrega]);
   const vig = info.vigencia!=null ? info.vigencia : E.vigencia;
   if(String(vig||"").trim()) puntos.push(["Vigencia:", `Es importante mencionar que esta cotización y sus condiciones comerciales tienen una validez de ${vig} días a contar de hoy.`]);
-  if(puntos.length){
-    need(12);
-    doc.setFont("helvetica","normal"); doc.setFontSize(11.5); doc.setTextColor(...INK);
-    doc.text("Puntos clave para la coordinación", M, y); y+=8;
-    const bx=M+4, tx=M+10, maxW=W-M-tx, LH=5;
-    puntos.forEach(([tit,txt])=>{
-      doc.setFontSize(10.5);
-      doc.setFont("helvetica","bold"); const tw=doc.getTextWidth(tit+" ");
-      doc.setFont("helvetica","normal");
-      const words=txt.split(/\s+/); let first="", k=0;
-      while(k<words.length){ const tryS=(first?first+" ":"")+words[k]; if(doc.getTextWidth(tryS) <= maxW-tw) { first=tryS; k++; } else break; }
-      const rest = k<words.length ? doc.splitTextToSize(words.slice(k).join(" "), maxW) : [];
-      const h=(1+rest.length)*LH+3;
+  const notas = String(info.notas||"").trim();
+
+  // Todo debe caber en 1 hoja: se prueba primero con el tamaño normal; si no cabe, se achican
+  // los espacios (g) y después la letra (f) hasta que quepa.
+  const NIVELES=[[1,1],[0.85,1],[0.7,1],[0.6,0.96],[0.5,0.92],[0.45,0.88],[0.4,0.84],[0.35,0.8],[0.3,0.76],[0.3,0.72],[0.25,0.68],[0.25,0.64],[0.2,0.6]];
+  for(const [g,f] of NIVELES){ const r=armar(g,f,false); if(r.ok) return r.doc.output("blob"); }
+  // Último recurso (textos larguísimos): letra mínima y, solo entonces, más de una hoja
+  return armar(0.2,0.6,true).doc.output("blob");
+
+  function armar(g, f, multi){
+    const doc = new jsPDF({unit:"mm", format:"a4"});
+    const G=v=>v*g, F=v=>v*f;
+    // Pie de página: se ubica desde abajo según cuántas líneas tenga
+    const pie=[E.web&&[E.web,15], E.correo&&[E.correo,11,true], E.telefono&&[E.telefono,14]].filter(Boolean);
+    const FOOT = 297 - (6+G(7)) - (pie.length ? G(3.5)+F(5.5)+(pie.length-1)*F(6.5) : 0);
+    let y = 10+G(4), fondo = y, salto = false;
+    const newPage=()=>{ footer(); doc.addPage(); y=M; };
+    const need=h=>{ if(y+h > FOOT-4){ if(multi) newPage(); else salto=true; } };
+    function footer(){
+      doc.setDrawColor(...GREEN); doc.setLineWidth(0.6); doc.line(0, FOOT, W, FOOT);
+      doc.setTextColor(...GTXT); doc.setFont("helvetica","normal");
+      let fy = FOOT + G(3.5) + F(5.5);
+      pie.forEach(([t,fs,sub])=>{
+        doc.setFontSize(F(fs)); doc.text(t, W/2, fy, {align:"center"});
+        if(sub){ const tw=doc.getTextWidth(t); doc.setDrawColor(...GTXT); doc.setLineWidth(0.25); doc.line(W/2-tw/2, fy+0.8*f, W/2+tw/2, fy+0.8*f); }
+        fy += F(6.5);
+      });
+    }
+    // Encabezado: logo + título
+    const lw = 62*(0.7+0.3*g), lh = lw*LOGO_RATIO;
+    try{ doc.addImage(LOGO_PDF,"JPEG",M-2,y,lw,lh); }catch(e){}
+    doc.setFont("helvetica","bold"); doc.setFontSize(F(22)); doc.setTextColor(...GREEN);
+    doc.text("COTIZACIÓN", W-M, y+F(12), {align:"right"});
+    doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5)); doc.setTextColor(...INK);
+    doc.text(`N° ${info.numero}`, W-M, y+F(19), {align:"right"});
+    doc.text(info.fecha, W-M, y+F(24.5), {align:"right"});
+    if(info.validaHasta){ doc.setFontSize(F(9.5)); doc.setTextColor(...MUTED); doc.text(`Válida hasta el ${info.validaHasta}`, W-M, y+F(30), {align:"right"}); }
+    y += Math.max(lh, info.validaHasta ? F(32) : F(26)) + G(6);
+    doc.setDrawColor(...GREEN); doc.setLineWidth(0.8); doc.line(M, y, W-M, y); y += F(4)+G(4);
+
+    // Datos de la empresa (arriba del cliente)
+    doc.setTextColor(...INK);
+    if(E.razon){ doc.setFont("helvetica","bold"); doc.setFontSize(F(11.5)); doc.text(E.razon, M, y); y+=F(5.4); }
+    doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5));
+    [E.dir1,E.dir2].filter(Boolean).forEach(t=>{ doc.text(t, M, y); y+=F(5); });
+    if(String(info.vendedor||"").trim()){ y+=G(1.5); doc.setFont("helvetica","bold"); doc.setTextColor(...MUTED); doc.text("Vendedor:", M, y);
+      doc.setFont("helvetica","normal"); doc.setTextColor(...INK); doc.text(String(info.vendedor), M+F(24), y); y+=F(5); }
+    y += G(5);
+
+    // Cliente
+    const fila=(lbl,val)=>{ if(!String(val||"").trim()) return; doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(...MUTED); doc.text(lbl, M, y);
+      doc.setFont("helvetica","normal"); doc.setTextColor(...INK); doc.text(String(val), M+F(24), y); y+=F(5)+G(1); };
+    fila("Cliente:", info.cliente); fila("Teléfono:", info.contacto); fila("Correo:", info.correo);
+    y += G(3);
+
+    // Producto y tabla
+    doc.setFont("helvetica","bold"); doc.setFontSize(F(13)); doc.setTextColor(...INK);
+    doc.text(data.titulo, M, y); y += F(3.5)+G(2.5);
+    const hh = F(6)+G(3);
+    doc.setFillColor(...GREEN); doc.rect(M, y, W-2*M, hh, "F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(255,255,255);
+    doc.text("Descripción", M+4, y+hh/2+F(1.5)); doc.text("Valor", W-M-4, y+hh/2+F(1.5), {align:"right"}); y += hh;
+    data.lines.forEach((ln,i)=>{
+      doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5));
+      const x0 = M+4+(ln.ind?6:0);
+      const txt = doc.splitTextToSize((ln.ind?"+ ":"")+ln.d, W-2*M-48-(ln.ind?6:0));
+      const h = txt.length*F(5)+G(3);
       need(h);
-      doc.setTextColor(...INK);
-      doc.circle(bx, y-1.3, 0.9, "F");
-      doc.setFont("helvetica","bold"); doc.text(tit, tx, y);
-      doc.setFont("helvetica","normal"); doc.text(first, tx+tw, y);
-      if(rest.length) doc.text(rest, tx, y+LH);
+      if(i%2===1){ doc.setFillColor(240,248,241); doc.rect(M, y, W-2*M, h, "F"); }
+      doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5)); doc.setTextColor(...(ln.ind?MUTED:INK));
+      const by = y+G(1.5)+F(4);
+      txt.forEach((t,k)=>doc.text(t, x0, by+k*F(5)));
+      doc.text(pdfMoney(ln.v), W-M-4, by, {align:"right"});
       y += h;
     });
+    doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y); y += G(5);
+
+    // Total
+    const th = F(12)+G(4);
+    need(th);
+    doc.setFillColor(...GREEN); doc.roundedRect(W-M-80, y, 80, th, 3*f, 3*f, "F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(F(11)); doc.setTextColor(255,255,255);
+    doc.text("TOTAL", W-M-74, y+th/2+F(2.2));
+    doc.setFontSize(F(16)); doc.text(pdfMoney(data.total), W-M-5, y+th/2+F(2.8), {align:"right"});
+    doc.setTextColor(...INK);
+    y += th; fondo = y; y += F(4)+G(6);
+
+    // Notas
+    if(notas){
+      doc.setFont("helvetica","normal"); doc.setFontSize(F(10));
+      const t=doc.splitTextToSize(notas, W-2*M);
+      need(F(5.5)+t.length*F(4.8));
+      doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(...INK); doc.text("Notas", M, y); y+=F(5.5);
+      doc.setFont("helvetica","normal"); doc.setFontSize(F(10)); doc.setTextColor(...MUTED);
+      t.forEach(ln=>{ need(F(4.8)); doc.setFont("helvetica","normal"); doc.setFontSize(F(10)); doc.setTextColor(...MUTED); doc.text(ln, M, y); fondo=y+F(1.5); y+=F(4.8); });
+      y += G(6);
+    }
+
+    // Puntos clave (título en negrita + texto que sigue en la misma línea)
+    if(puntos.length){
+      const fs=F(10.5), LH=F(5), bx=M+4, tx=M+10, maxW=W-M-tx;
+      const items = puntos.map(([tit,txt])=>{
+        doc.setFontSize(fs); doc.setFont("helvetica","bold"); const tw=doc.getTextWidth(tit+" ");
+        doc.setFont("helvetica","normal");
+        const words=String(txt).split(/\s+/); let first="", k=0;
+        while(k<words.length){ const tryS=(first?first+" ":"")+words[k]; if(doc.getTextWidth(tryS) <= maxW-tw) { first=tryS; k++; } else break; }
+        const rest = k<words.length ? doc.splitTextToSize(words.slice(k).join(" "), maxW) : [];
+        return {tit, tw, first, rest, n:1+rest.length};
+      });
+      need(F(5.5)+G(2.5)+items[0].n*LH);
+      doc.setFont("helvetica","normal"); doc.setFontSize(fs+f); doc.setTextColor(...INK);
+      doc.text("Puntos clave para la coordinación", M, y); y += F(5.5)+G(2.5);
+      items.forEach(it=>{
+        need(it.n*LH);
+        // después de un posible salto de página se vuelve a fijar la letra
+        doc.setFontSize(fs); doc.setTextColor(...INK); doc.setFillColor(...INK);
+        doc.circle(bx, y-F(1.25), 0.9*f, "F");
+        doc.setFont("helvetica","bold"); doc.text(it.tit, tx, y);
+        doc.setFont("helvetica","normal"); doc.text(it.first, tx+it.tw, y);
+        it.rest.forEach((ln,k)=>doc.text(ln, tx, y+(k+1)*LH));
+        fondo = y+(it.n-1)*LH+F(1.5);
+        y += it.n*LH + G(3);
+      });
+    }
+    footer();
+    return { doc, ok: !salto && fondo <= FOOT-4 };
   }
-  footer();
-  return doc.output("blob");
 }
 
 function openQuoteForm(getData){
