@@ -1,0 +1,8 @@
+{
+  "name": "cotizador-sharewow",
+  "private": true,
+  "description": "Servidor del cotizador Sharewow en Netlify (la página está en GitHub Pages)",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.3"
+  }
+}

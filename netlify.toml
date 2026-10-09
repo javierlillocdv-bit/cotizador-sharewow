@@ -1,0 +1,14 @@
+# Servidor del cotizador (Netlify). La página sigue publicada en GitHub Pages.
+[build]
+  publish = "netlify/sitio"
+  functions = "netlify/functions"
+  command = "npm install --no-audit --no-fund && echo Servidor listo"
+  # Solo vuelve a publicar si cambió el servidor (no por cambios de fotos o de la página),
+  # así no se gastan créditos de Netlify en cada actualización.
+  ignore = "if [ -z \"$CACHED_COMMIT_REF\" ] || [ \"$CACHED_COMMIT_REF\" = \"$COMMIT_REF\" ]; then exit 1; fi; git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- netlify/ netlify.toml package.json"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"

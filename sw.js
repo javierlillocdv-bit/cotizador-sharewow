@@ -1,7 +1,7 @@
 /* Guarda las fotos en el equipo para que aparezcan al instante */
 const CACHE = "sw-fotos-v1";
 const esFoto = u => (u.origin === self.location.origin && u.pathname.includes("/img/") && !u.pathname.endsWith(".json"))
-                 || u.hostname === "lh3.googleusercontent.com";
+                 || u.pathname.endsWith("/api/foto") || u.hostname === "lh3.googleusercontent.com";
 
 self.addEventListener("install", e => {
   self.skipWaiting();

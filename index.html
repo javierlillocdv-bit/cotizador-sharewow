@@ -372,7 +372,7 @@ async function sha(text){
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-/* ---------- Conexión con Google (Apps Script) ---------- */
+/* ---------- Conexión con el servidor (Netlify) ---------- */
 const API_URL = (window.COTIZADOR_CONFIG && window.COTIZADOR_CONFIG.apiUrl) || "";
 let TOKEN = null, BOOT = null;
 async function api(action, payload){
@@ -385,7 +385,7 @@ async function api(action, payload){
   return j;
 }
 
-/* ---------- Datos: cuenta (Google) con respaldo local ---------- */
+/* ---------- Datos: servidor con respaldo local ---------- */
 let writeChain = Promise.resolve();
 function queueWrite(fn){ writeChain = writeChain.then(fn).catch(()=>toast("No se pudo guardar en tu cuenta")); return writeChain; }
 
@@ -534,7 +534,7 @@ function showLock(mode){
     </div>
     ${mode==="entrar"?`<label class="remember"><input type="checkbox" id="rem" ${lsGet(LS_TOKEN)?"checked":""}> Recordar en este equipo</label>`:""}
     <div class="err" id="err"></div>
-    ${!db?`<p class="small">${API_URL?"No se pudo conectar con Google. Revisa internet y recarga la página.":"Sin conexión con Google: la clave y los cambios quedan solo en este equipo."}</p>`:""}
+    ${!db?`<p class="small">${API_URL?"No se pudo conectar con el servidor. Revisa internet y recarga la página.":"Sin conexión al servidor: la clave y los cambios quedan solo en este equipo."}</p>`:""}
   </div></div>`;
   const dots = document.getElementById("dots"), err=document.getElementById("err");
   const draw = ()=>{ const n=Math.max(4,entered.length); dots.innerHTML = Array.from({length:n},(_,i)=>`<span class="${i<entered.length?"f":""}"></span>`).join(""); };
@@ -601,7 +601,7 @@ function renderApp(){
     <button class="btn icon" id="lock" aria-label="Bloquear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
   </header>
   <main class="${editing?"editing":""}">
-    ${!db?`<div class="banner">${API_URL?"No se pudo conectar con Google. Recarga la página; si sigue, revisa internet.":"Falta conectar con Google: por ahora los cambios se guardan solo en este equipo."}</div>`:""}
+    ${!db?`<div class="banner">${API_URL?"No se pudo conectar con el servidor. Recarga la página; si sigue, revisa internet.":"Falta conectar el servidor: por ahora los cambios se guardan solo en este equipo."}</div>`:""}
     ${isCart ? cartoonHTML(node) : isCab ? cabHTML(node) : isFijo ? fijoHTML(node) : isGrp ? grupoHTML(node) : isMed ? medidasHTML(node) : list.length||editing ? `<div class="grid${list.length+(editing?1:0)===1?" one":""}" style="--n:${Math.min(list.length+(editing?1:0),3)};--n2:${Math.min(list.length+(editing?1:0),2)}">${list.map((t,i)=>tileHTML(t,i,list.length)).join("")}
       ${editing?`<button class="add-tile" id="addTile">+ Añadir botón</button>`:""}</div>${!path.length&&!editing?`<button class="gen" id="verCots" style="display:block;margin:34px auto 0;font-size:clamp(30px,4.4vw,44px);padding:20px 56px">Ver cotizaciones</button>`:""}`
       : `<div class="empty">Aquí todavía no hay nada.<br>Toca <b>Editar</b> para añadir botones.</div>`}
@@ -1975,7 +1975,10 @@ async function emailRec(rec){
 }
 function mailErrMsg(e){
   const c=e&&e.code;
-  if(c==="sin_google") return "El envío automático necesita la conexión con Google.";
+  if(c==="sin_google") return "El envío automático necesita la conexión con el servidor.";
+  if(c==="correo_no_configurado") return "Falta poner el correo y la contraseña de Titan en Netlify.";
+  if(c==="smtp_auth") return "Titan rechazó el correo o la contraseña. Revísalos en Netlify.";
+  if(c && String(c).startsWith("smtp")) return "El correo de Titan no respondió. Intenta de nuevo en un momento.";
   if(c==="sin_conexion") return "No hay internet para enviar el correo.";
   if(c==="correo_invalido") return "El correo del cliente no es válido.";
   if(c==="no_autorizado") return "La sesión venció: bloquea y vuelve a entrar con la clave.";
