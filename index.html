@@ -489,6 +489,7 @@ async function loadAll(){
   if(!menu){ const raw=lsGet(LS_MENU); menu = raw? JSON.parse(raw) : clone(DEFAULT_MENU); }
   if(!pin){ const raw=lsGet(LS_PIN); if(raw) pin = JSON.parse(raw); }
   if(!db){ const raw=lsGet(LS_PRECIOS); if(raw){ try{ P=JSON.parse(raw); }catch(e){} } const rc=lsGet(LS_CARTOON); if(rc){ try{ C=JSON.parse(rc); }catch(e){} } }
+  if(C && C.cats && !C.p22real){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p22" && Array.isArray(p.tipos) && p.tipos.length && !p.tipos.includes("1 persona realista")){ const j=p.tipos.indexOf("1 persona"); p.tipos.splice(j>=0?j+1:p.tipos.length,0,"1 persona realista"); } })); C.p22real=true; }
   if(C && C.cats && !C.p20masc){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p20"){ p.estilosTipo=p.estilosTipo||{}; if(!p.estilosTipo["1 persona + 1 mascota"]) p.estilosTipo["1 persona + 1 mascota"]=[]; } })); C.p20masc=true; }
   if(C && C.cats && !C.p20dos){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p20" && !p.estilosTipo) p.estilosTipo={"2 personas":[]}; })); C.p20dos=true; }
   if(C && C.cats && !C.p20ab){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p20" && Array.isArray(p.estilos) && p.estilos.join()==="A,B,C,D,E") p.estilos=["A","B"]; })); C.p20ab=true; }
@@ -1470,7 +1471,7 @@ const DEFAULT_C = {
       CP("p21","Figura cartoon con movimiento",MM([4,6],[34000,88000]),{detalle:"Temblores",estilos:["A","B","C","D","E"]})
     ]},
     {id:"k7",nombre:"Adorno relieve 3D",productos:[
-      CP("p22","Marco de foto en relieve",MM([6,8],[36000,65000]),{tipos:T3M,estilos:["A","B","C","D","E"]}),
+      CP("p22","Marco de foto en relieve",MM([6,8],[36000,65000]),{tipos:["1 persona","1 persona realista","1 mascota cartoon","1 mascota realista"],estilos:["A","B","C","D","E"]}),
       CP("p23a","Distintivo 3D circular",MM([4,5],[23000,30000]),{tipos:T3M}),
       CP("p23b","Distintivo 3D cuadrado",MM([4,5],[23000,30000]),{tipos:T3M}),
       CP("p24","Colgante en relieve",MM([6],[30000]),{estilos:["A","B","C","D","E","F","G","H"]})
@@ -1697,7 +1698,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
