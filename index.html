@@ -507,6 +507,8 @@ async function loadAll(){
   if(C && C.cats && !C.precios2610){ const NUEVOS={p19b:{6:48000,8:78000}, p20:{6:48000,8:78000}, p22:{6:43000,8:73000}};
     C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ const np=NUEVOS[p.id]; if(np && Array.isArray(p.medidas)) p.medidas.forEach(m=>{ if(np[m.cm]!=null) m.precio=np[m.cm]; }); })); C.precios2610=true; }
   if(C && C.cats && !C.p22real){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p22" && Array.isArray(p.tipos) && p.tipos.length && !p.tipos.includes("1 persona realista")){ const j=p.tipos.indexOf("1 persona"); p.tipos.splice(j>=0?j+1:p.tipos.length,0,"1 persona realista"); } })); C.p22real=true; }
+  // Marco de foto en relieve: solo "1 persona" tiene estilos (A–E); los otros tipos pasan directo a las medidas
+  if(C && C.cats && !C.p22est){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p22"){ p.estilosTipo=p.estilosTipo||{}; ["1 persona realista","1 mascota cartoon","1 mascota realista"].forEach(t=>{ p.estilosTipo[t]=[]; }); } })); C.p22est=true; }
   if(C && C.cats && !C.p20masc){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p20"){ p.estilosTipo=p.estilosTipo||{}; if(!p.estilosTipo["1 persona + 1 mascota"]) p.estilosTipo["1 persona + 1 mascota"]=[]; } })); C.p20masc=true; }
   if(C && C.cats && !C.p20dos){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p20" && !p.estilosTipo) p.estilosTipo={"2 personas":[]}; })); C.p20dos=true; }
   if(C && C.cats && !C.p20ab){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p20" && Array.isArray(p.estilos) && p.estilos.join()==="A,B,C,D,E") p.estilos=["A","B"]; })); C.p20ab=true; }
@@ -1571,7 +1573,7 @@ const DEFAULT_C = {
       CP("p21","Figura cartoon con movimiento",MM([4,6],[34000,88000]),{detalle:"Temblores",estilos:["A","B","C","D","E"]})
     ]},
     {id:"k7",nombre:"Adorno relieve 3D",productos:[
-      CP("p22","Marco de foto en relieve",MM([6,8],[43000,73000]),{tipos:["1 persona","1 persona realista","1 mascota cartoon","1 mascota realista"],estilos:["A","B","C","D","E"]}),
+      CP("p22","Marco de foto en relieve",MM([6,8],[43000,73000]),{tipos:["1 persona","1 persona realista","1 mascota cartoon","1 mascota realista"],estilos:["A","B","C","D","E"],estilosTipo:{"1 persona realista":[],"1 mascota cartoon":[],"1 mascota realista":[]}}),
       CP("p23a","Distintivo 3D circular",MM([4,5],[23000,30000]),{tipos:T3M}),
       CP("p23b","Distintivo 3D cuadrado",MM([4,5],[23000,30000]),{tipos:T3M}),
       CP("p24","Colgante en relieve",MM([6],[30000]),{estilos:["A","B","C","D","E","F","G","H"]})
@@ -1798,7 +1800,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
