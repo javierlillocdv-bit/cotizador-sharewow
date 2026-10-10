@@ -1894,7 +1894,8 @@ function buildPDF(info, data){
     const G=v=>v*g, F=v=>v*f;
     // Pie de página: se ubica desde abajo según cuántas líneas tenga
     const pie=[E.web&&[E.web,15], E.correo&&[E.correo,11,true], E.telefono&&[E.telefono,14]].filter(Boolean);
-    const FOOT = ALTO - (6+G(7)) - (pie.length ? G(3.5)+F(5.5)+(pie.length-1)*F(6.5) : 0);
+    // el pie termina a ~2 cm del borde: las impresoras no imprimen el último centímetro de la hoja
+    const FOOT = ALTO - (13+G(7)) - (pie.length ? G(3.5)+F(5.5)+(pie.length-1)*F(6.5) : 0);
     let y = 10+G(4), fondo = y, salto = false;
     const newPage=()=>{ footer(); doc.addPage(); y=M; };
     const need=h=>{ if(y+h > FOOT-4){ if(multi) newPage(); else salto=true; } };
