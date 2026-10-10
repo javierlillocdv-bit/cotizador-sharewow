@@ -2044,10 +2044,12 @@ function openQuoteForm(getData){
       vigencia: empresa().vigencia||"", titulo:data.titulo, lines:data.lines.map(l=>({d:l.d, v:l.v==null?null:l.v, ind:!!l.ind})), total:data.total, cabina:!!data.cabina };
     const saved = await saveQuoteRec(rec);
     if(saved){ if(qcache) qcache.unshift(rec); } else { err.textContent="No se pudo guardar en el registro, pero igual puedes descargarla."; }
-    go.textContent="Generando PDF…";
     let dlMsg="", mailMsg="", mailOk=false;
-    try{ await downloadRec(rec); }catch(e){ dlMsg=dlErrMsg(e); }
+    // Primero se envía el correo y después se descarga: al descargar, la tablet/iPad abre el PDF
+    // y deja el cotizador de fondo, lo que cortaba el envío.
     if(correo && db){ go.textContent="Enviando correo…"; try{ await emailRec(rec); mailOk=true; }catch(e){ mailMsg=mailErrMsg(e); } }
+    go.textContent="Generando PDF…";
+    try{ await downloadRec(rec); }catch(e){ dlMsg=dlErrMsg(e); }
     dlgBody.innerHTML = `<h3>${saved?"Cotización guardada":"Cotización lista"}</h3>
       <p>${esc(cliente)} · <b>${money(data.total)}</b> · N° ${esc(numero)}</p>
       ${dlMsg?`<p class="warn-txt">${esc(dlMsg)} Puedes descargarla de nuevo en Ver cotizaciones.</p>`:""}
@@ -2101,12 +2103,22 @@ async function downloadRec(rec){
   setTimeout(()=>URL.revokeObjectURL(url), 60000);
 }
 function blobToB64(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.onerror=rej; fr.readAsDataURL(blob); }); }
+const enPantalla = () => document.visibilityState!=="hidden" ? Promise.resolve() : new Promise(ok=>{
+  const f=()=>{ if(document.visibilityState!=="hidden"){ document.removeEventListener("visibilitychange",f); ok(); } };
+  document.addEventListener("visibilitychange",f); });
 async function emailRec(rec){
   if(!db) throw {code:"sin_google"};
   if(!rec.correo) throw {code:"sin_correo"};
   const {blob, name} = pdfOf(rec);
   const pdf = await blobToB64(blob);
-  await api("email",{rec, pdf, filename:name, empresa:empresa()});
+  const enviar = () => api("email",{rec, pdf, filename:name, empresa:empresa()});
+  try{ await enviar(); }
+  catch(e){
+    // Si se cortó la conexión (por ejemplo, la app quedó de fondo), se reintenta solo una vez al volver
+    if(!(e && e.code==="sin_conexion")) throw e;
+    await enPantalla(); await new Promise(ok=>setTimeout(ok, 800));
+    await enviar();
+  }
 }
 function mailErrMsg(e){
   const c=e&&e.code;
