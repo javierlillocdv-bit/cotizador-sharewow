@@ -1858,6 +1858,13 @@ function ctLines(){
   return {titulo:`Figura cartoon · ${k.nombre}`, lines:L, total:c.total, cabina:false};
 }
 
+// Número de cotización correlativo: lo entrega el servidor (10000, 10001, 10002…) para que
+// la tablet y el iPad nunca repitan uno. Sin servidor, se lleva la cuenta en este equipo.
+const LS_NUM="sw-numero", NUM_INICIAL=10000;
+async function nuevoNumero(){
+  if(db){ try{ const r=await api("numero"); if(r && r.numero) return String(r.numero); }catch(e){} return cotNumero(); }
+  let n=Number(lsGet(LS_NUM)); n = n>=NUM_INICIAL ? n+1 : NUM_INICIAL; lsSet(LS_NUM, String(n)); return String(n);
+}
 function cotNumero(){ const d=new Date(), z=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`; }
 function logoData(){ return null; }
 const pdfMoney = n => n==null ? "Consultar" : "$" + Math.round(Number(n)).toLocaleString("es-CL");
@@ -2031,10 +2038,10 @@ function openQuoteForm(getData){
     if(!cliente){ err.textContent="Escribe el nombre del cliente."; document.getElementById("qCli").focus(); return; }
     lsSet("sw-vendedor", vendedor);
     if(correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)){ err.textContent="Revisa el correo, parece que está mal escrito."; document.getElementById("qMail").focus(); return; }
-    const now=Date.now(), numero=cotNumero();
+    go.disabled=true; go.textContent="Guardando…";
+    const numero=await nuevoNumero(), now=Date.now();
     const rec={ id:"c"+now.toString(36)+Math.random().toString(36).slice(2,6), numero, creado:now, vendedor, cliente, contacto, correo, notas,
       vigencia: empresa().vigencia||"", titulo:data.titulo, lines:data.lines.map(l=>({d:l.d, v:l.v==null?null:l.v, ind:!!l.ind})), total:data.total, cabina:!!data.cabina };
-    go.disabled=true; go.textContent="Guardando…";
     const saved = await saveQuoteRec(rec);
     if(saved){ if(qcache) qcache.unshift(rec); } else { err.textContent="No se pudo guardar en el registro, pero igual puedes descargarla."; }
     go.textContent="Generando PDF…";

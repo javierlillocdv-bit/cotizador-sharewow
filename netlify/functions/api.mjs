@@ -56,6 +56,21 @@ async function guardarCotizacion(st, rec, enviada) {
   await st.setJSON(k, r);
 }
 
+// Número correlativo de cotización (10000, 10001, 10002…), compartido entre todos los equipos.
+// Se usa una escritura condicional para que dos equipos nunca reciban el mismo número.
+const NUMERO_INICIAL = 10000;
+async function siguienteNumero(st) {
+  for (let intento = 0; intento < 10; intento++) {
+    const cur = await st.getWithMetadata("contador", { type: "json" });
+    const n = cur && cur.data && Number(cur.data.n) >= NUMERO_INICIAL ? Number(cur.data.n) + 1 : NUMERO_INICIAL;
+    const r = cur ? await st.setJSON("contador", { n }, { onlyIfMatch: cur.etag })
+                  : await st.setJSON("contador", { n }, { onlyIfNew: true });
+    if (!r || r.modified !== false) return n;
+    await new Promise(ok => setTimeout(ok, 40 + Math.random() * 160));
+  }
+  throw new Error("numero_ocupado");
+}
+
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const plata = n => n == null ? "Consultar" : "$" + Math.round(Number(n)).toLocaleString("es-CL");
 
@@ -139,6 +154,7 @@ async function atender(req, origen) {
     await st.setJSON("cot/" + rec.id, { ...(prev || rec), _pk: k, pdfUrl: url });
     return { url, k };
   }
+  if (a === "numero") return { numero: await siguienteNumero(st) };
   if (a === "quotes") return { quotes: await listarCotizaciones(st) };
   if (a === "saveQuote") { await guardarCotizacion(st, req.rec, false); return {}; }
   if (a === "delQuote") {
