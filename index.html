@@ -1871,7 +1871,8 @@ const pdfMoney = n => n==null ? "Consultar" : "$" + Math.round(Number(n)).toLoca
 
 function buildPDF(info, data){
   const { jsPDF } = window.jspdf;
-  const E=empresa(), W=210, M=18, GREEN=[59,179,62], GTXT=[84,160,64], INK=[22,23,29], MUTED=[98,101,122];
+  // Hoja tamaño carta (21,59 × 27,94 cm)
+  const E=empresa(), W=215.9, ALTO=279.4, M=18, GREEN=[59,179,62], GTXT=[84,160,64], INK=[22,23,29], MUTED=[98,101,122];
   // Puntos clave (se calculan una vez)
   const puntos=[];
   if(data.cabina && E.captura) puntos.push(["Proceso de Captura:", E.captura]);
@@ -1889,11 +1890,11 @@ function buildPDF(info, data){
   return armar(0.2,0.6,true).doc.output("blob");
 
   function armar(g, f, multi){
-    const doc = new jsPDF({unit:"mm", format:"a4"});
+    const doc = new jsPDF({unit:"mm", format:"letter"});
     const G=v=>v*g, F=v=>v*f;
     // Pie de página: se ubica desde abajo según cuántas líneas tenga
     const pie=[E.web&&[E.web,15], E.correo&&[E.correo,11,true], E.telefono&&[E.telefono,14]].filter(Boolean);
-    const FOOT = 297 - (6+G(7)) - (pie.length ? G(3.5)+F(5.5)+(pie.length-1)*F(6.5) : 0);
+    const FOOT = ALTO - (6+G(7)) - (pie.length ? G(3.5)+F(5.5)+(pie.length-1)*F(6.5) : 0);
     let y = 10+G(4), fondo = y, salto = false;
     const newPage=()=>{ footer(); doc.addPage(); y=M; };
     const need=h=>{ if(y+h > FOOT-4){ if(multi) newPage(); else salto=true; } };
