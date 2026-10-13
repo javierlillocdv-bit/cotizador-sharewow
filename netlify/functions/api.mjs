@@ -83,7 +83,9 @@ function htmlCorreo(rec, e) {
     `<p>Te enviamos la cotización <b>N° ${esc(rec.numero)}</b> de Sharewow. Va adjunta en PDF.</p>` +
     `<p style="margin:16px 0 6px"><b>${esc(rec.titulo)}</b></p>` +
     `<table style="border-collapse:collapse;width:100%;border:1px solid #DCE3DD">${filas}` +
-    `<tr style="background:#3BB33E;color:#fff"><td style="padding:8px 10px"><b>TOTAL</b></td><td style="padding:8px 10px;text-align:right"><b>${plata(rec.total)}</b></td></tr></table>` +
+    (rec.desc ? `<tr style="border-top:1px solid #DCE3DD"><td style="padding:6px 10px"><b>Subtotal</b></td><td style="padding:6px 10px;text-align:right"><b>${plata(rec.subtotal)}</b></td></tr>` +
+      `<tr><td style="padding:6px 10px;color:#2B8F2F"><b>Descuento ${esc(rec.desc)}%</b></td><td style="padding:6px 10px;text-align:right;color:#2B8F2F;white-space:nowrap"><b>-${plata(rec.descMonto)}</b></td></tr>` : "") +
+    `<tr style="background:#3BB33E;color:#fff"><td style="padding:8px 10px"><b>${rec.desc ? "PRECIO FINAL" : "TOTAL"}</b></td><td style="padding:8px 10px;text-align:right"><b>${plata(rec.total)}</b></td></tr></table>` +
     (rec.vigencia ? `<p style="color:#62657A">Esta cotización tiene una validez de ${esc(rec.vigencia)} días.</p>` : "") +
     `<p>Saludos,<br>${rec.vendedor ? esc(rec.vendedor) + "<br>" : ""}` +
     [e.razon, e.dir1, e.dir2, e.web, e.correo, e.telefono].filter(Boolean).map(esc).join("<br>") + `</p></div>`;

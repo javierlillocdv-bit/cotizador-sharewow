@@ -168,6 +168,12 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .total-box{display:inline-block;border:3px solid var(--ink);border-radius:18px;padding:12px 40px;margin-top:8px;
   font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(64px,12vw,130px);font-weight:600;line-height:1.05}
 .warn-txt{color:var(--danger);font-weight:600;min-height:1em;margin:14px 0 0}
+.desc-lbl{font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(28px,3.8vw,40px);font-weight:600;margin-top:22px}
+.desc-chips .chip{font-size:19px;padding:11px 20px}
+.desc-l{font-size:20px;margin:12px 0 0;color:var(--muted)}
+.desc-l b{color:var(--green-dark)}
+.total-box.tachado{font-size:clamp(40px,7vw,72px);opacity:.5;text-decoration:line-through;text-decoration-thickness:3px}
+.total-box.final{background:var(--green);border-color:var(--green);color:#fff}
 @media (max-width:640px){.ovals.five{grid-template-columns:repeat(5,1fr);gap:8px}.ovals.five .oval{font-size:32px;padding:16px 4px}.brow{grid-template-columns:24px 60px 1fr auto;font-size:14px}.gen{padding:18px 56px}}
 .pblock{border-bottom:1px solid var(--line);padding:4px 0 10px}
 .pblock:last-child{border-bottom:0}
@@ -704,7 +710,7 @@ function renderApp(){
   </main>`;
   const editBtn=document.getElementById("edit"); if(editBtn) editBtn.addEventListener("click",()=>{editing=!editing;med.draft=null;grp.draft=null;grp.accDraft=null;fx.draft=null;cab.draft=null;ct.draft=null;imgMode=false;renderApp();});
   document.getElementById("lock").addEventListener("click",lockNow);
-  const gh=document.getElementById("goHome"); if(gh) gh.addEventListener("click",()=>{ path=[]; editing=false; imgMode=false; med.sel=null; med.draft=null; med.acc={}; med.accOpen=false; fx.draft=null; grpReset(); cabReset(); ctReset(); renderApp(); window.scrollTo(0,0); });
+  const gh=document.getElementById("goHome"); if(gh) gh.addEventListener("click",()=>{ descPct=0; path=[]; editing=false; imgMode=false; med.sel=null; med.draft=null; med.acc={}; med.accOpen=false; fx.draft=null; grpReset(); cabReset(); ctReset(); renderApp(); window.scrollTo(0,0); });
   const bk=document.getElementById("back"); bk.addEventListener("click",()=>{
     if(isCab && (!editing||imgMode) && cabBack()){ }
     else if(isCart && (!editing||imgMode) && ctBack()){ }
@@ -1119,7 +1125,7 @@ const PPOS = ["parado","sentado","acostado","echado"];
 const PPOS_TXT = {parado:"Parado", sentado:"Sentado", acostado:"Acostado", echado:"Echado"};
 
 let cab = {hist:[], scr:"inicio", q:null, accFor:null, draft:null};
-function cabReset(){ cab = {hist:[], scr:"inicio", q:null, accFor:null, draft:null}; }
+function cabReset(){ descPct=0; cab = {hist:[], scr:"inicio", q:null, accFor:null, draft:null}; }
 function cabGo(s){ cab.hist.push(cab.scr); cab.scr=s; renderApp(); window.scrollTo(0,0); }
 function cabBack(){ if(cab.hist.length){ cab.scr=cab.hist.pop(); return true; } return false; }
 
@@ -1212,6 +1218,24 @@ function handleImgClick(e){
   const r=e.target.closest("[data-imgrm]"); if(r){ e.preventDefault(); e.stopPropagation(); deleteImg(imgKey(r.dataset.imgrm)); renderApp(); toast("Foto quitada"); return true; }
   return false;
 }
+/* ---- Descuento de la cotización en pantalla (0, 5, 10, 15 o 20 %) ---- */
+const DESCUENTOS=[5,10,15,20];
+let descPct=0;
+const descMonto = t => Math.round((Number(t)||0)*descPct/100);
+function precioHTML(total){
+  const hay = descPct>0 && total>0, m=descMonto(total);
+  return `<div class="total-lbl">Precio</div><div class="total-box${hay?" tachado":""}">${money(total)}</div>
+    ${total>0?`<div class="desc-lbl">Descuento</div>
+    <div class="chips desc-chips">${chip("Sin descuento",!descPct,'data-a="desc" data-v="0"')}${DESCUENTOS.map(p=>chip(p+"%",descPct===p,`data-a="desc" data-v="${p}"`)).join("")}</div>`:""}
+    ${hay?`<p class="desc-l">Descuento ${descPct}%: <b>−${money(m)}</b></p>
+    <div class="total-lbl">Precio final</div><div class="total-box final">${money(total-m)}</div>`:""}`;
+}
+function conDescuento(data){
+  if(!data || data.total==null || !(data.total>0) || !descPct) return data;
+  const m=descMonto(data.total);
+  return {...data, subtotal:data.total, desc:descPct, descMonto:m, total:data.total-m};
+}
+const descTxt = total => (descPct>0 && total>0) ? [`Descuento ${descPct}%: -${money(descMonto(total))}`, `Precio final: ${money(total-descMonto(total))}`] : [];
 const chip = (t,on,attr)=>`<button class="chip" aria-pressed="${on?"true":"false"}" ${attr}>${esc(t)}</button>`;
 const mFmt = n => n==null ? "sin precio" : money(n);
 const mts = h => cmTxt(+h.toFixed(2)) + " m";
@@ -1227,7 +1251,7 @@ function extBlock(q){
     <div style="margin-top:8px"><button class="accbtn" data-a="ext">${L.length?"Cambiar bases y extras":"Agregar base o extra"}</button></div></div>`;
 }
 function totalBlock(total, faltan){
-  return `<div class="total-lbl">Precio</div><div class="total-box">${money(total)}</div>
+  return `${precioHTML(total)}
     ${faltan?`<p class="warn-txt">Hay ${faltan} figura${faltan>1?"s":""} sin precio en la tabla. Revisa los precios con Editar.</p>`:""}
     <button class="gen" data-a="pdf" style="margin-top:26px;font-size:clamp(30px,4.4vw,44px);padding:20px 48px">Generar cotización</button>
     <div class="row-btns" style="max-width:520px;margin:18px auto 0">
@@ -1371,16 +1395,16 @@ function cabText(){
     L.push(`Figura ${cmTxt(q.cm)} cm · ${TABLA_TXT[q.tabla]}${q.tabla!=="bebe"&&q.pos!=="pie"?" · "+POS_TXT[q.pos]:""}: ${money(c.fig)}`);
     accItems(q.acc,c.base,false).forEach(x=>L.push(`+ ${x.it.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`));
     (c.pets||[]).forEach(p=>L.push(`${RAZA_TXT[p.raza]} ${cmTxt(p.cm)} cm · ${PPOS_TXT[p.pos]}: ${mFmt(p.precio)}`));
-    extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`);
+    extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   } else if(q.modo==="grupo"){ const c=calcGrupo(q);
     L.push(`Figura grupal ${cmTxt(q.size)} cm${c.tablaGrupo==="bajo"?" (todos hasta 1,40 m)":""}`);
     c.per.forEach(r=>{ L.push(`Persona ${r.i+1} (${mts(r.h)}) ${cmTxt(r.cm)} cm${r.pos!=="pie"?" · "+POS_TXT[r.pos]:""}: ${mFmt(r.figP)}`);
       if(r.base!=null) accItems(q.per[r.i].acc,r.base,true).forEach(x=>L.push(`   + ${x.it.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); });
     c.pets.forEach(p=>L.push(`${RAZA_TXT[p.raza]} ${cmTxt(p.cm)} cm · ${PPOS_TXT[p.pos]}: ${mFmt(p.precio)}`));
-    extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`);
+    extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   } else { const c=calcMascota(q);
     L.push(`${RAZA_TXT[q.raza]} ${cmTxt(c.cm)} cm · ${PPOS_TXT[q.pos]}: ${mFmt(c.precio)}`);
-    extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`);
+    extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   }
   return L.join("\n");
 }
@@ -1395,7 +1419,8 @@ function bindCab(node){
     if(handleImgClick(e)) return;
     const b=e.target.closest("[data-a]"); if(!b || !root.contains(b)) return;
     const a=b.dataset.a, v=b.dataset.v, i=Number(b.dataset.i), d=Number(b.dataset.d), q=cab.q;
-    if(a==="start"){
+    if(a==="desc"){ descPct=Number(v)||0; renderApp(); return; }
+    if(a==="start"){ descPct=0;
       if(v==="sola"){ cab.q={modo:"sola",tabla:null,cm:null,pos:"pie",acc:{},ext:{},modP:0,modM:0,pets:[]}; cabGo("estatura"); }
       if(v==="grupo"){ cab.q={modo:"grupo",size:null,n:null,hs:[],per:[],pets:[],ext:{},modP:0,modM:0}; cabGo("gsize"); }
       if(v==="mascota"){ cab.q={modo:"mascota",raza:null,pos:"parado",ext:{},modM:0}; cabGo("mraza"); }
@@ -1591,7 +1616,7 @@ const CAT_DIRECTO = ["k5","k6"];   // categorías de un solo producto que pasan 
 const catDirecta = k => k && CAT_DIRECTO.includes(k.id) && k.productos.length===1;
 
 let ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, draft:null};
-function ctReset(){ ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, draft:null}; }
+function ctReset(){ descPct=0; ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, draft:null}; }
 function ctGo(s){ ct.hist.push(ct.scr); ct.scr=s; renderApp(); window.scrollTo(0,0); }
 function ctBack(){ if(ct.hist.length){ ct.scr=ct.hist.pop(); return true; } return false; }
 function ctCat(){ return C.cats.find(k=>k.id===ct.cat); }
@@ -1673,7 +1698,7 @@ function cartoonScreenHTML(node){
           ${p.mods?`<div class="chips" style="justify-content:flex-start">${Object.keys(CPOS_TXT).map(x=>chip(CPOS_TXT[x]+(x==="sentado"?` +${cmTxt(C.mods.sentado)}%`:x==="piso"?` +${cmTxt(C.mods.piso)}%`:""),ct.pos===x,`data-a="cpos" data-v="${x}"`)).join("")}</div>`:""}
           ${prodAcc(p)?`<div class="sl" style="margin-top:12px"><b>Accesorios</b><span>${money(c.acc)}</span></div>
           ${accLine(c.items,'data-a="cacc"')}`:""}</div>`:""}
-        <div class="total-lbl">Precio</div><div class="total-box">${money(c.total)}</div>
+        ${precioHTML(c.total)}
         <button class="gen" data-a="cpdf" style="margin-top:26px;font-size:clamp(30px,4.4vw,44px);padding:20px 48px">Generar cotización</button>
         <div class="row-btns" style="max-width:520px;margin:18px auto 0">
           <button class="btn" data-a="ccopy">Copiar texto</button>
@@ -1697,7 +1722,7 @@ function ctText(){
   const p=ctProd(), k=ctCat(), c=ctCalc(), L=[];
   L.push(`${k.nombre}: ${p.nombre} ${cmTxt(ct.cm)} cm${ct.estilo?" · estilo "+ct.estilo:""}${ct.tipo?" · "+ct.tipo:""}${p.mods&&ct.pos!=="pie"?" · "+CPOS_TXT[ct.pos]:""}: ${money(c.fig)}`);
   (c.items||[]).forEach(x=>L.push(`+ ${x.it.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`));
-  L.push(`Total: ${money(c.total)}`);
+  L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   return L.join("\n");
 }
 
@@ -1706,7 +1731,8 @@ function bindCartoon(node){
     if(handleImgClick(e)) return;
     const b=e.target.closest("[data-a]"); if(!b || !root.contains(b)) return;
     const a=b.dataset.a, v=b.dataset.v, d=Number(b.dataset.d);
-    const startProd = id=>{ ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pos="pie"; ct.acc={};
+    if(a==="desc"){ descPct=Number(v)||0; renderApp(); return; }
+    const startProd = id=>{ descPct=0; ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pos="pie"; ct.acc={};
       const p=ctProd(), ms=prodMeds(p);
       if(p.tipos && p.tipos.length) ctGo("tipo");
       else if(p.estilos && p.estilos.length) ctGo("estilo");
@@ -1963,14 +1989,24 @@ function buildPDF(info, data){
       doc.text(pdfMoney(ln.v), W-M-4, by, {align:"right"});
       y += h;
     });
-    doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y); y += G(5);
+    doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
+    // Descuento: subtotal, descuento y después el precio final
+    if(data.desc){
+      const fila2=(lbl,val,color)=>{ const h=F(5)+G(3); need(h); const by=y+G(1.5)+F(4);
+        doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(...color); doc.text(lbl, M+4, by);
+        doc.text(val, W-M-4, by, {align:"right"}); y+=h; };
+      fila2("Subtotal", pdfMoney(data.subtotal), INK);
+      fila2(`Descuento ${data.desc}%`, "-"+pdfMoney(data.descMonto), GTXT);
+      doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
+    }
+    y += G(5);
 
     // Total
     const th = F(12)+G(4);
     need(th);
     doc.setFillColor(...GREEN); doc.roundedRect(W-M-80, y, 80, th, 3*f, 3*f, "F");
     doc.setFont("helvetica","bold"); doc.setFontSize(F(11)); doc.setTextColor(255,255,255);
-    doc.text("TOTAL", W-M-74, y+th/2+F(2.2));
+    doc.text(data.desc?"PRECIO FINAL":"TOTAL", W-M-74, y+th/2+F(2.2));
     doc.setFontSize(F(16)); doc.text(pdfMoney(data.total), W-M-5, y+th/2+F(2.8), {align:"right"});
     doc.setTextColor(...INK);
     y += th; fondo = y; y += F(4)+G(6);
@@ -2018,7 +2054,7 @@ function buildPDF(info, data){
 }
 
 function openQuoteForm(getData){
-  const data = getData();
+  const data = conDescuento(getData());
   if(!data || data.total==null){ toast("Esta cotización no tiene precio"); return; }
   dlgBody.innerHTML = `<h3>Generar cotización</h3>
     <p class="small" style="margin:-8px 0 6px">${esc(data.titulo)} · <b>${money(data.total)}</b></p>
@@ -2045,7 +2081,7 @@ function openQuoteForm(getData){
     go.disabled=true; go.textContent="Guardando…";
     const numero=await nuevoNumero(), now=Date.now();
     const rec={ id:"c"+now.toString(36)+Math.random().toString(36).slice(2,6), numero, creado:now, vendedor, cliente, contacto, correo, notas,
-      vigencia: empresa().vigencia||"", titulo:data.titulo, lines:data.lines.map(l=>({d:l.d, v:l.v==null?null:l.v, ind:!!l.ind})), total:data.total, cabina:!!data.cabina };
+      vigencia: empresa().vigencia||"", titulo:data.titulo, lines:data.lines.map(l=>({d:l.d, v:l.v==null?null:l.v, ind:!!l.ind})), total:data.total, cabina:!!data.cabina, ...(data.desc?{subtotal:data.subtotal, desc:data.desc, descMonto:data.descMonto}:{}) };
     const saved = await saveQuoteRec(rec);
     if(saved){ if(qcache) qcache.unshift(rec); } else { err.textContent="No se pudo guardar en el registro, pero igual puedes descargarla."; }
     let dlMsg="", mailMsg="", mailOk=false;
@@ -2095,7 +2131,7 @@ function infoFromRec(rec){
 }
 function pdfOf(rec){
   if(!window.jspdf || !window.jspdf.jsPDF) throw {code:"nolib"};
-  const blob=buildPDF(infoFromRec(rec), {titulo:rec.titulo, lines:rec.lines, total:rec.total, cabina:rec.cabina});
+  const blob=buildPDF(infoFromRec(rec), {titulo:rec.titulo, lines:rec.lines, total:rec.total, cabina:rec.cabina, subtotal:rec.subtotal, desc:rec.desc, descMonto:rec.descMonto});
   const name=`Cotizacion ${rec.cliente||"Sharewow"} ${rec.numero}.pdf`.replace(/[\\/:*?"<>|]/g,"");
   return {blob, name};
 }
@@ -2150,7 +2186,9 @@ function mailBody(rec){
   L.push(`Te enviamos la cotización N° ${rec.numero} de Sharewow:`); L.push("");
   L.push(rec.titulo);
   rec.lines.forEach(l=>L.push(`${l.ind?"   + ":"- "}${l.d}: ${pdfMoney(l.v)}`));
-  L.push(""); L.push(`TOTAL: ${pdfMoney(rec.total)}`); L.push("");
+  L.push("");
+  if(rec.desc){ L.push(`Subtotal: ${pdfMoney(rec.subtotal)}`); L.push(`Descuento ${rec.desc}%: -${pdfMoney(rec.descMonto)}`); }
+  L.push(`${rec.desc?"PRECIO FINAL":"TOTAL"}: ${pdfMoney(rec.total)}`); L.push("");
   if(rec.vigencia) L.push(`Esta cotización tiene una validez de ${rec.vigencia} días, hasta el ${fechaLarga(venceMs(rec))}.`);
   if(rec.notas) L.push(`Notas: ${rec.notas}`);
   L.push(""); L.push("Saludos,"); if(rec.vendedor) L.push(rec.vendedor); [E.razon, E.rut&&`RUT: ${E.rut}`, E.dir1,E.dir2,E.web,E.correo,E.telefono].filter(Boolean).forEach(x=>L.push(x));
