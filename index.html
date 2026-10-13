@@ -1990,13 +1990,20 @@ function buildPDF(info, data){
       y += h;
     });
     doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
+    const fila2=(lbl,val,color,colorVal)=>{ const h=F(5)+G(3); need(h); const by=y+G(1.5)+F(4);
+      doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(...color); doc.text(lbl, M+4, by);
+      doc.setTextColor(...(colorVal||color)); doc.text(val, W-M-4, by, {align:"right"}); y+=h; };
     // Descuento: subtotal, descuento y después el precio final
     if(data.desc){
-      const fila2=(lbl,val,color)=>{ const h=F(5)+G(3); need(h); const by=y+G(1.5)+F(4);
-        doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(...color); doc.text(lbl, M+4, by);
-        doc.text(val, W-M-4, by, {align:"right"}); y+=h; };
       fila2("Subtotal", pdfMoney(data.subtotal), INK);
       fila2(`Descuento ${data.desc}%`, "-"+pdfMoney(data.descMonto), GTXT);
+      doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
+    }
+    // Valor neto + IVA 19% (los precios ya incluyen IVA: neto = total / 1,19)
+    if(data.total>0){
+      const neto=Math.round(data.total/1.19), iva=data.total-neto;
+      fila2("Valor neto", pdfMoney(neto), MUTED, INK);
+      fila2("IVA (19%)", pdfMoney(iva), MUTED, INK);
       doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
     }
     y += G(5);
