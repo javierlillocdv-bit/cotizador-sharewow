@@ -1910,12 +1910,12 @@ function buildPDF(info, data){
   if(String(vig||"").trim()) puntos.push(["Vigencia:", `Es importante mencionar que esta cotización y sus condiciones comerciales tienen una validez de ${vig} días a contar de hoy.`]);
   const notas = String(info.notas||"").trim();
 
-  // Todo debe caber en 1 hoja: se prueba primero con el tamaño normal; si no cabe, se achican
-  // los espacios (g) y después la letra (f) hasta que quepa.
-  const NIVELES=[[1,1],[0.85,1],[0.7,1],[0.6,0.96],[0.5,0.92],[0.45,0.88],[0.4,0.84],[0.35,0.8],[0.3,0.76],[0.3,0.72],[0.25,0.68],[0.25,0.64],[0.2,0.6]];
+  // Primero se intenta que quepa en 1 hoja juntando un poco los espacios (g) y, como mucho,
+  // achicando apenas la letra (f, mínimo 90 %). Si aun así no cabe (por ejemplo, muchas personas),
+  // la cotización sigue en una 2ª hoja con el tamaño normal.
+  const NIVELES=[[1,1],[0.85,1],[0.7,1],[0.6,0.95],[0.5,0.9]];
   for(const [g,f] of NIVELES){ const r=armar(g,f,false); if(r.ok) return r.doc.output("blob"); }
-  // Último recurso (textos larguísimos): letra mínima y, solo entonces, más de una hoja
-  return armar(0.2,0.6,true).doc.output("blob");
+  return armar(1,1,true).doc.output("blob");
 
   function armar(g, f, multi){
     const doc = new jsPDF({unit:"mm", format:"letter"});
@@ -1925,8 +1925,14 @@ function buildPDF(info, data){
     // el pie termina a ~2 cm del borde: las impresoras no imprimen el último centímetro de la hoja
     const FOOT = ALTO - (13+G(7)) - (pie.length ? G(3.5)+F(5.5)+(pie.length-1)*F(6.5) : 0);
     let y = 10+G(4), fondo = y, salto = false;
-    const newPage=()=>{ footer(); doc.addPage(); y=M; };
-    const need=h=>{ if(y+h > FOOT-4){ if(multi) newPage(); else salto=true; } };
+    // Hoja nueva: pie en la anterior y, arriba, el número de la cotización
+    const newPage=()=>{ footer(); doc.addPage(); y=M;
+      doc.setFont("helvetica","bold"); doc.setFontSize(F(11)); doc.setTextColor(...GREEN); doc.text("COTIZACIÓN", M, y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(F(10)); doc.setTextColor(...MUTED);
+      doc.text(`N° ${info.numero} · ${info.cliente||""} (continuación)`.replace(" ·  (", " ("), W-M, y, {align:"right"});
+      y += F(3); doc.setDrawColor(...GREEN); doc.setLineWidth(0.6); doc.line(M, y, W-M, y); y += F(4)+G(5); };
+    // ¿Cabe un bloque de alto h? Si no, pasa a otra hoja (o marca que no cabe). Devuelve true si cambió de hoja.
+    const need=h=>{ if(y+h > FOOT-4){ if(multi){ newPage(); return true; } salto=true; } return false; };
     function footer(){
       doc.setDrawColor(...GREEN); doc.setLineWidth(0.6); doc.line(0, FOOT, W, FOOT);
       doc.setTextColor(...GTXT); doc.setFont("helvetica","normal");
@@ -1973,15 +1979,16 @@ function buildPDF(info, data){
     doc.setFont("helvetica","bold"); doc.setFontSize(F(13)); doc.setTextColor(...INK);
     doc.text(data.titulo, M, y); y += F(3.5)+G(2.5);
     const hh = F(6)+G(3);
-    doc.setFillColor(...GREEN); doc.rect(M, y, W-2*M, hh, "F");
-    doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(255,255,255);
-    doc.text("Descripción", M+4, y+hh/2+F(1.5)); doc.text("Valor", W-M-4, y+hh/2+F(1.5), {align:"right"}); y += hh;
+    const encabezadoTabla=()=>{ doc.setFillColor(...GREEN); doc.rect(M, y, W-2*M, hh, "F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(255,255,255);
+      doc.text("Descripción", M+4, y+hh/2+F(1.5)); doc.text("Valor", W-M-4, y+hh/2+F(1.5), {align:"right"}); y += hh; };
+    need(hh+F(5)+G(3)); encabezadoTabla();
     data.lines.forEach((ln,i)=>{
       doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5));
       const x0 = M+4+(ln.ind?6:0);
       const txt = doc.splitTextToSize((ln.ind?"+ ":"")+ln.d, W-2*M-48-(ln.ind?6:0));
       const h = txt.length*F(5)+G(3);
-      need(h);
+      if(need(h)) encabezadoTabla();   // en la hoja nueva se repite el encabezado de la tabla
       if(i%2===1){ doc.setFillColor(240,248,241); doc.rect(M, y, W-2*M, h, "F"); }
       doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5)); doc.setTextColor(...(ln.ind?MUTED:INK));
       const by = y+G(1.5)+F(4);
@@ -1990,6 +1997,9 @@ function buildPDF(info, data){
       y += h;
     });
     doc.setDrawColor(220,227,221); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
+    // subtotal, descuento, neto, IVA y el recuadro del total quedan siempre juntos en la misma hoja
+    const th = F(12)+G(4);
+    need(((data.desc?2:0)+(data.total>0?2:0))*(F(5)+G(3)) + G(5) + th);
     const fila2=(lbl,val,color,colorVal)=>{ const h=F(5)+G(3); need(h); const by=y+G(1.5)+F(4);
       doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(...color); doc.text(lbl, M+4, by);
       doc.setTextColor(...(colorVal||color)); doc.text(val, W-M-4, by, {align:"right"}); y+=h; };
@@ -2009,7 +2019,6 @@ function buildPDF(info, data){
     y += G(5);
 
     // Total
-    const th = F(12)+G(4);
     need(th);
     doc.setFillColor(...GREEN); doc.roundedRect(W-M-80, y, 80, th, 3*f, 3*f, "F");
     doc.setFont("helvetica","bold"); doc.setFontSize(F(11)); doc.setTextColor(255,255,255);
@@ -2056,6 +2065,11 @@ function buildPDF(info, data){
       });
     }
     footer();
+    // Con más de una hoja: "Página 1 de 2" en el pie de cada hoja
+    const nPag = doc.getNumberOfPages();
+    if(nPag>1) for(let i=1;i<=nPag;i++){ doc.setPage(i);
+      doc.setFont("helvetica","normal"); doc.setFontSize(F(9)); doc.setTextColor(...MUTED);
+      doc.text(`Página ${i} de ${nPag}`, W-M, FOOT+G(3.5)+F(5.5), {align:"right"}); }
     return { doc, ok: !salto && fondo <= FOOT-4 };
   }
 }
