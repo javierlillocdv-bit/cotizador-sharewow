@@ -1639,8 +1639,8 @@ const CPOS_TXT = {pie:"De pie", sentado:"Sentado o hincado", piso:"En el piso o 
 const CAT_DIRECTO = ["k5","k6"];   // categorías de un solo producto que pasan directo a sus tipos o estilos
 const catDirecta = k => k && CAT_DIRECTO.includes(k.id) && k.productos.length===1;
 
-let ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, draft:null};
-function ctReset(){ descPct=0; ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, draft:null}; }
+let ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, ext:{}, draft:null};
+function ctReset(){ descPct=0; ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pos:"pie", acc:{}, ext:{}, draft:null}; }
 function ctGo(s){ ct.hist.push(ct.scr); ct.scr=s; renderApp(); window.scrollTo(0,0); }
 function ctBack(){ if(ct.hist.length){ ct.scr=ct.hist.pop(); return true; } return false; }
 function ctCat(){ return C.cats.find(k=>k.id===ct.cat); }
@@ -1661,7 +1661,8 @@ function ctCalc(){
   const fig = Math.round(base*mult);
   const items = prodAcc(p) ? cAccItems(base) : [];
   const acc = items.reduce((s,x)=>s+x.sub,0);
-  return {base, fig, items, acc, total:fig+acc};
+  const ext = extTot({ext:ct.ext||{}});   // bases y extras (las mismas de cabina)
+  return {base, fig, items, acc, ext, total:fig+acc+ext};
 }
 
 function cartoonHTML(node){
@@ -1722,6 +1723,9 @@ function cartoonScreenHTML(node){
           ${p.mods?`<div class="chips" style="justify-content:flex-start">${Object.keys(CPOS_TXT).map(x=>chip(CPOS_TXT[x]+(x==="sentado"?` +${cmTxt(C.mods.sentado)}%`:x==="piso"?` +${cmTxt(C.mods.piso)}%`:""),ct.pos===x,`data-a="cpos" data-v="${x}"`)).join("")}</div>`:""}
           ${prodAcc(p)?`<div class="sl" style="margin-top:12px"><b>Accesorios</b><span>${money(c.acc)}</span></div>
           ${accLine(c.items,'data-a="cacc"')}`:""}</div>`:""}
+        ${(()=>{ const L=extItems({ext:ct.ext||{}}); return `<div class="sumcard"><div class="sl"><b>Bases y extras</b><span>${money(c.ext||0)}</span></div>
+          ${L.map(x=>`<div class="sl sub"><span>${esc(x.nombre)}${x.q>1?" x"+x.q:""}</span><span>${money(x.sub)}</span></div>`).join("")}
+          <div style="margin-top:8px"><button class="accbtn" data-a="cext">${L.length?"Cambiar bases y extras":"Agregar base o extra"}</button></div></div>`; })()}
         ${precioHTML(c.total)}
         <button class="gen" data-a="cpdf" style="margin-top:26px;font-size:clamp(30px,4.4vw,44px);padding:20px 48px">Generar cotización</button>
         <button class="cartadd" data-a="ccartadd">${CART_ICON}Agregar al carrito</button>
@@ -1729,6 +1733,15 @@ function cartoonScreenHTML(node){
           <button class="btn" data-a="ccopy">Copiar texto</button>
           <button class="btn" data-a="cnew">Nueva cotización</button></div>`}
       </div>`;
+  }
+  if(s==="ext"){
+    const ext=ct.ext||(ct.ext={});
+    const row=(e,n)=>`<div class="accitem ${n?"on":""}"><div class="an">${esc(e.nombre)}<span class="ap">${money(e.precio)}</span></div>
+      <div class="qty"><button data-a="ceq" data-v="${e.id}" data-d="-1" aria-label="Quitar" ${n?"":"disabled"}>−</button><span>${n}</span><button data-a="ceq" data-v="${e.id}" data-d="1" aria-label="Agregar">+</button></div></div>`;
+    return `<div class="med"><div class="pillhead">Bases y extras</div>
+      <div class="acclist">${P.extras.map(e=>row(e, ext[e.id]||0)).join("")}</div>
+      <div class="accsum">Extras: ${money(extTot({ext}))}</div>
+      <button class="gen" data-a="cback">Listo</button></div>`;
   }
   if(s==="acc"){
     const c=ctCalc(); const base=c.base||0;
@@ -1747,6 +1760,7 @@ function ctText(){
   const p=ctProd(), k=ctCat(), c=ctCalc(), L=[];
   L.push(`${k.nombre}: ${p.nombre} ${cmTxt(ct.cm)} cm${ct.estilo?" · estilo "+ct.estilo:""}${ct.tipo?" · "+ct.tipo:""}${p.mods&&ct.pos!=="pie"?" · "+CPOS_TXT[ct.pos]:""}: ${money(c.fig)}`);
   (c.items||[]).forEach(x=>L.push(`+ ${x.it.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`));
+  extItems({ext:ct.ext||{}}).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`));
   L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   return L.join("\n");
 }
@@ -1757,7 +1771,7 @@ function bindCartoon(node){
     const b=e.target.closest("[data-a]"); if(!b || !root.contains(b)) return;
     const a=b.dataset.a, v=b.dataset.v, d=Number(b.dataset.d);
     if(a==="desc"){ descPct=Number(v)||0; renderApp(); return; }
-    const startProd = id=>{ descPct=0; ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pos="pie"; ct.acc={};
+    const startProd = id=>{ descPct=0; ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pos="pie"; ct.acc={}; ct.ext={};
       const p=ctProd(), ms=prodMeds(p);
       if(p.tipos && p.tipos.length) ctGo("tipo");
       else if(p.estilos && p.estilos.length) ctGo("estilo");
@@ -1774,6 +1788,8 @@ function bindCartoon(node){
     else if(a==="tipo"){ ct.tipo = ct.tipo===v ? null : v; const pp=ctProd(); if(pp && ct.estilo && !tipoEstilos(pp,ct.tipo).includes(ct.estilo)) ct.estilo=null; renderApp(); }
     else if(a==="cpos"){ ct.pos=v; renderApp(); }
     else if(a==="cacc"){ ctGo("acc"); }
+    else if(a==="cext"){ ctGo("ext"); }
+    else if(a==="ceq"){ ct.ext=ct.ext||{}; ct.ext[v]=Math.max(0,(ct.ext[v]||0)+d); if(!ct.ext[v]) delete ct.ext[v]; renderApp(); }
     else if(a==="caq"){ ct.acc[v]=Math.max(0,(ct.acc[v]||0)+d); if(!ct.acc[v]) delete ct.acc[v]; renderApp(); }
     else if(a==="cback"){ if(ctBack()){ renderApp(); window.scrollTo(0,0); } }
     else if(a==="cnew"){ ctReset(); renderApp(); window.scrollTo(0,0); }
@@ -1909,7 +1925,8 @@ function ctLines(){
   const det=[`${cmTxt(ct.cm)} cm`]; if(ct.estilo) det.push("estilo "+ct.estilo); if(ct.tipo) det.push(ct.tipo); if(p.mods&&ct.pos!=="pie") det.push(CPOS_TXT[ct.pos]);
   L.push({d:`${p.nombre} · ${det.join(" · ")}`, v:c.fig});
   (c.items||[]).forEach(x=>L.push({d:`${x.it.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub, ind:true}));
-  return {titulo:`Figura cartoon · ${k.nombre}`, lines:L, total:c.total, cabina:false};
+  extItems({ext:ct.ext||{}}).forEach(x=>L.push({d:`${x.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub}));
+  return {titulo: normTxt(k.nombre)==="figura cartoon" ? "Figura cartoon" : `Figura cartoon · ${k.nombre}`, lines:L, total:c.total, cabina:false};
 }
 
 // Número de cotización correlativo: lo entrega el servidor (10000, 10001, 10002…) para que
