@@ -75,7 +75,8 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&am
 const plata = n => n == null ? "Consultar" : "$" + Math.round(Number(n)).toLocaleString("es-CL");
 
 function htmlCorreo(rec, e) {
-  const filas = (rec.lines || []).map(l =>
+  const filas = (rec.lines || []).map(l => l.sec ?
+    `<tr style="background:#E9F6EA"><td colspan="2" style="padding:7px 10px"><b>${esc(l.d)}</b></td></tr>` :
     `<tr><td style="padding:6px 10px;${l.ind ? "color:#62657A;padding-left:24px" : ""}">${l.ind ? "+ " : ""}${esc(l.d)}</td>` +
     `<td style="padding:6px 10px;text-align:right;white-space:nowrap">${plata(l.v)}</td></tr>`).join("");
   return `<div style="font-family:Arial,sans-serif;color:#16171D;max-width:560px">` +

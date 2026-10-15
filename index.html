@@ -168,6 +168,23 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .total-box{display:inline-block;border:3px solid var(--ink);border-radius:18px;padding:12px 40px;margin-top:8px;
   font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(64px,12vw,130px);font-weight:600;line-height:1.05}
 .warn-txt{color:var(--danger);font-weight:600;min-height:1em;margin:14px 0 0}
+.cartbtn{position:relative}
+.cartn{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;border-radius:11px;background:var(--green);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;padding:0 6px;border:2px solid var(--surface)}
+.cartn[hidden]{display:none}
+.cartadd{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px auto 0;border:2.5px solid var(--green);color:var(--green-dark);background:var(--surface);
+  border-radius:999px;padding:14px 34px;font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(24px,3.4vw,32px);font-weight:600}
+.cartadd svg{width:28px;height:28px}
+.citems{display:flex;flex-direction:column;gap:10px;margin:4px 0 14px}
+.citem{border:1.5px solid var(--line);border-radius:16px;padding:12px 14px}
+.cih{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:16px}
+.cih b{flex:1}
+.cil{font-size:14px;color:var(--muted);margin-top:6px;display:flex;flex-direction:column;gap:2px}
+.cil div{display:flex;justify-content:space-between;gap:8px}
+.cil .ind{padding-left:14px}
+.cquit{margin-top:8px;border:0;background:none;color:var(--danger);font-weight:700;font-size:14px;padding:4px 0}
+.ctot{display:flex;justify-content:space-between;align-items:baseline;font-size:20px;border-top:1.5px solid var(--line);padding-top:12px}
+.ctot b{font-size:26px}
+.ctot.final{border-top:0;padding-top:4px;color:var(--green-dark)}
 .desc-lbl{font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(28px,3.8vw,40px);font-weight:600;margin-top:22px}
 .desc-chips .chip{font-size:19px;padding:11px 20px}
 .desc-l{font-size:20px;margin:12px 0 0;color:var(--muted)}
@@ -381,6 +398,9 @@ const uid = () => "t"+Date.now().toString(36)+Math.random().toString(36).slice(2
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),1700)}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+/* Carrito: figuras de cabina y cartoon que se juntan en una sola cotización (se guarda en este equipo) */
+const LS_CARRITO="sw-carrito-v1";
+let carrito = (()=>{ try{ const c=JSON.parse(lsGet(LS_CARRITO)||"null"); if(c && Array.isArray(c.items)) return {items:c.items, desc:Number(c.desc)||0}; }catch(e){} return {items:[], desc:0}; })();
 function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
 
 async function sha(text){
@@ -700,6 +720,7 @@ function renderApp(){
     ${path.length?`<button class="homebtn" id="goHome" aria-label="Volver al inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Volver al inicio</span></button>`:""}
     ${PERMITIR_EDITAR?`${editing?`<button class="btn" id="settings">Ajustes</button>`:""}
     <button class="btn ${editing?"on":""}" id="edit">${editing?"Listo":"Editar"}</button>`:""}
+    <button class="btn icon cartbtn" id="cartBtn" aria-label="Carrito">${CART_ICON}<span class="cartn" id="cartCount" ${carrito.items.length?"":"hidden"}>${carrito.items.length}</span></button>
     <button class="btn icon" id="lock" aria-label="Bloquear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
   </header>
   <main class="${editing?"editing":""}">
@@ -710,7 +731,8 @@ function renderApp(){
   </main>`;
   const editBtn=document.getElementById("edit"); if(editBtn) editBtn.addEventListener("click",()=>{editing=!editing;med.draft=null;grp.draft=null;grp.accDraft=null;fx.draft=null;cab.draft=null;ct.draft=null;imgMode=false;renderApp();});
   document.getElementById("lock").addEventListener("click",lockNow);
-  const gh=document.getElementById("goHome"); if(gh) gh.addEventListener("click",()=>{ descPct=0; path=[]; editing=false; imgMode=false; med.sel=null; med.draft=null; med.acc={}; med.accOpen=false; fx.draft=null; grpReset(); cabReset(); ctReset(); renderApp(); window.scrollTo(0,0); });
+  document.getElementById("cartBtn").addEventListener("click",abrirCarrito);
+  const gh=document.getElementById("goHome"); if(gh) gh.addEventListener("click",irAlInicio);
   const bk=document.getElementById("back"); bk.addEventListener("click",()=>{
     if(isCab && (!editing||imgMode) && cabBack()){ }
     else if(isCart && (!editing||imgMode) && ctBack()){ }
@@ -1230,10 +1252,10 @@ function precioHTML(total){
     ${hay?`<p class="desc-l">Descuento ${descPct}%: <b>−${money(m)}</b></p>
     <div class="total-lbl">Precio final</div><div class="total-box final">${money(total-m)}</div>`:""}`;
 }
-function conDescuento(data){
-  if(!data || data.total==null || !(data.total>0) || !descPct) return data;
-  const m=descMonto(data.total);
-  return {...data, subtotal:data.total, desc:descPct, descMonto:m, total:data.total-m};
+function conDescuento(data, pct=descPct){
+  if(!data || data.total==null || !(data.total>0) || !pct) return data;
+  const m=Math.round(data.total*pct/100);
+  return {...data, subtotal:data.total, desc:pct, descMonto:m, total:data.total-m};
 }
 const descTxt = total => (descPct>0 && total>0) ? [`Descuento ${descPct}%: -${money(descMonto(total))}`, `Precio final: ${money(total-descMonto(total))}`] : [];
 const chip = (t,on,attr)=>`<button class="chip" aria-pressed="${on?"true":"false"}" ${attr}>${esc(t)}</button>`;
@@ -1254,6 +1276,7 @@ function totalBlock(total, faltan){
   return `${precioHTML(total)}
     ${faltan?`<p class="warn-txt">Hay ${faltan} figura${faltan>1?"s":""} sin precio en la tabla. Revisa los precios con Editar.</p>`:""}
     <button class="gen" data-a="pdf" style="margin-top:26px;font-size:clamp(30px,4.4vw,44px);padding:20px 48px">Generar cotización</button>
+    <button class="cartadd" data-a="cartadd">${CART_ICON}Agregar al carrito</button>
     <div class="row-btns" style="max-width:520px;margin:18px auto 0">
       <button class="btn" data-a="copy">Copiar texto</button>
       <button class="btn" data-a="new">Nueva cotización</button></div>`;
@@ -1452,6 +1475,7 @@ function bindCab(node){
     else if(a==="new"){ cabReset(); renderApp(); window.scrollTo(0,0); }
     else if(a==="copy"){ copyTxt(cabText()); }
     else if(a==="pdf"){ openQuoteForm(cabLines); }
+    else if(a==="cartadd"){ agregarAlCarrito(cabLines()); }
   };
   root.querySelectorAll("[data-h]").forEach(inp=>{
     inp.oninput=e=>{ cab.q.hs[Number(e.target.dataset.h)]=e.target.value; };
@@ -1700,6 +1724,7 @@ function cartoonScreenHTML(node){
           ${accLine(c.items,'data-a="cacc"')}`:""}</div>`:""}
         ${precioHTML(c.total)}
         <button class="gen" data-a="cpdf" style="margin-top:26px;font-size:clamp(30px,4.4vw,44px);padding:20px 48px">Generar cotización</button>
+        <button class="cartadd" data-a="ccartadd">${CART_ICON}Agregar al carrito</button>
         <div class="row-btns" style="max-width:520px;margin:18px auto 0">
           <button class="btn" data-a="ccopy">Copiar texto</button>
           <button class="btn" data-a="cnew">Nueva cotización</button></div>`}
@@ -1754,6 +1779,7 @@ function bindCartoon(node){
     else if(a==="cnew"){ ctReset(); renderApp(); window.scrollTo(0,0); }
     else if(a==="ccopy"){ copyTxt(ctText()); }
     else if(a==="cpdf"){ openQuoteForm(ctLines); }
+    else if(a==="ccartadd"){ agregarAlCarrito(ctLines()); }
   };
   if(editing){ bindModeToggle(); if(!imgMode) bindCartoonEditor(); }
 }
@@ -1983,7 +2009,15 @@ function buildPDF(info, data){
       doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(255,255,255);
       doc.text("Descripción", M+4, y+hh/2+F(1.5)); doc.text("Valor", W-M-4, y+hh/2+F(1.5), {align:"right"}); y += hh; };
     need(hh+F(5)+G(3)); encabezadoTabla();
+    let zi=0;
     data.lines.forEach((ln,i)=>{
+      if(ln.sec){   // título de cada figura del carrito
+        const h=F(5)+G(3.5); if(need(h+F(5)+G(3))) encabezadoTabla();
+        doc.setFillColor(222,240,223); doc.rect(M, y, W-2*M, h, "F");
+        doc.setFont("helvetica","bold"); doc.setFontSize(F(10.5)); doc.setTextColor(...INK);
+        doc.text(doc.splitTextToSize(ln.d, W-2*M-8)[0], M+4, y+G(1.75)+F(3.9)); y+=h; zi=0; return;
+      }
+      i = zi++;
       doc.setFont("helvetica","normal"); doc.setFontSize(F(10.5));
       const x0 = M+4+(ln.ind?6:0);
       const txt = doc.splitTextToSize((ln.ind?"+ ":"")+ln.d, W-2*M-48-(ln.ind?6:0));
@@ -2074,8 +2108,8 @@ function buildPDF(info, data){
   }
 }
 
-function openQuoteForm(getData){
-  const data = conDescuento(getData());
+function openQuoteForm(getData, opts={}){
+  const data = conDescuento(getData(), opts.desc!=null ? opts.desc : descPct);
   if(!data || data.total==null){ toast("Esta cotización no tiene precio"); return; }
   dlgBody.innerHTML = `<h3>Generar cotización</h3>
     <p class="small" style="margin:-8px 0 6px">${esc(data.titulo)} · <b>${money(data.total)}</b></p>
@@ -2087,7 +2121,7 @@ function openQuoteForm(getData){
     <p class="warn-txt" id="qErr"></p>
     <div class="row-btns"><button class="btn" id="qCancel">Cancelar</button><button class="btn primary" id="qGo">${db?"Guardar, descargar y enviar":"Guardar y descargar PDF"}</button></div>
     <p class="small" style="margin-top:12px">La cotización queda guardada en <b>Ver cotizaciones</b>${db?" y, si pones correo, se le envía al cliente automáticamente":""}. Los datos de la tienda se cambian en Editar → Ajustes.</p>`;
-  dlg.showModal();
+  if(!dlg.open) dlg.showModal();   // desde el carrito la ventana ya está abierta
   setTimeout(()=>{ const f=document.getElementById(lsGet("sw-vendedor")?"qCli":"qVen"); if(f) f.focus(); },50);
   document.getElementById("qCancel").onclick=()=>dlg.close();
   document.getElementById("qGo").onclick=async ()=>{
@@ -2102,7 +2136,7 @@ function openQuoteForm(getData){
     go.disabled=true; go.textContent="Guardando…";
     const numero=await nuevoNumero(), now=Date.now();
     const rec={ id:"c"+now.toString(36)+Math.random().toString(36).slice(2,6), numero, creado:now, vendedor, cliente, contacto, correo, notas,
-      vigencia: empresa().vigencia||"", titulo:data.titulo, lines:data.lines.map(l=>({d:l.d, v:l.v==null?null:l.v, ind:!!l.ind})), total:data.total, cabina:!!data.cabina, ...(data.desc?{subtotal:data.subtotal, desc:data.desc, descMonto:data.descMonto}:{}) };
+      vigencia: empresa().vigencia||"", titulo:data.titulo, lines:data.lines.map(l=>({d:l.d, v:l.v==null?null:l.v, ind:!!l.ind, ...(l.sec?{sec:true}:{})})), total:data.total, cabina:!!data.cabina, ...(data.desc?{subtotal:data.subtotal, desc:data.desc, descMonto:data.descMonto}:{}) };
     const saved = await saveQuoteRec(rec);
     if(saved){ if(qcache) qcache.unshift(rec); } else { err.textContent="No se pudo guardar en el registro, pero igual puedes descargarla."; }
     let dlMsg="", mailMsg="", mailOk=false;
@@ -2111,6 +2145,7 @@ function openQuoteForm(getData){
     if(correo && db){ go.textContent="Enviando correo…"; try{ await emailRec(rec); mailOk=true; }catch(e){ mailMsg=mailErrMsg(e); } }
     go.textContent="Generando PDF…";
     try{ await downloadRec(rec); }catch(e){ dlMsg=dlErrMsg(e); }
+    if(opts.alTerminar) opts.alTerminar();
     dlgBody.innerHTML = `<h3>${saved?"Cotización guardada":"Cotización lista"}</h3>
       <p>${esc(cliente)} · <b>${money(data.total)}</b> · N° ${esc(numero)}</p>
       ${dlMsg?`<p class="warn-txt">${esc(dlMsg)} Puedes descargarla de nuevo en Ver cotizaciones.</p>`:""}
@@ -2125,6 +2160,70 @@ function openQuoteForm(getData){
     };
     document.getElementById("qDone").onclick=()=>dlg.close();
   };
+}
+
+/* ===================== Carrito ===================== */
+const CART_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3.5h2.6l2.4 11.2a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.2l1.7-7.3H6.1"/></svg>`;
+function guardarCarrito(){
+  lsSet(LS_CARRITO, JSON.stringify(carrito));
+  const b=document.getElementById("cartCount"); if(b){ b.textContent=carrito.items.length; b.hidden=!carrito.items.length; }
+}
+const carritoTotal = () => carrito.items.reduce((s,it)=>s+(Number(it.total)||0),0);
+function irAlInicio(){ descPct=0; path=[]; editing=false; imgMode=false; med.sel=null; med.draft=null; med.acc={}; med.accOpen=false; fx.draft=null; grpReset(); cabReset(); ctReset(); renderApp(); window.scrollTo(0,0); }
+function agregarAlCarrito(data){
+  if(!data || !(data.total>0)){ toast("Esta figura no tiene precio"); return; }
+  const it={ id:"i"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), titulo:data.titulo,
+    lines:data.lines.map(l=>({d:l.d, v:l.v==null?null:l.v, ind:!!l.ind})), total:data.total, cabina:!!data.cabina };
+  carrito.items.push(it); guardarCarrito();
+  const n=carrito.items.length;
+  dlgBody.innerHTML = `<h3>Agregado al carrito</h3>
+    <p style="margin:-6px 0 6px"><b>${esc(it.titulo)}</b> · ${money(it.total)}</p>
+    <p class="small">Llevas ${n} figura${n>1?"s":""} en el carrito · Total ${money(carritoTotal())}</p>
+    <div class="row-btns" style="margin-top:16px"><button class="btn" id="cSeguir">Seguir agregando</button><button class="btn primary" id="cVer">Ver carrito</button></div>`;
+  if(!dlg.open) dlg.showModal();
+  document.getElementById("cSeguir").onclick=()=>{ dlg.close(); irAlInicio(); };
+  document.getElementById("cVer").onclick=()=>abrirCarrito();
+}
+// Una sola cotización con todas las figuras: cada figura es una sección con sus líneas
+function carritoData(){
+  const its=carrito.items; if(!its.length) return null;
+  if(its.length===1){ const it=its[0]; return {titulo:it.titulo, lines:it.lines, total:it.total, cabina:it.cabina}; }
+  const lines=[]; its.forEach(it=>{ lines.push({d:it.titulo, v:null, sec:true}); it.lines.forEach(l=>lines.push(l)); });
+  const cab=its.some(i=>i.cabina), car=its.some(i=>!i.cabina);
+  return {titulo: cab&&car ? "Figuras en cabina y cartoon" : cab ? "Figuras en cabina" : "Figuras cartoon", lines, total:carritoTotal(), cabina:cab};
+}
+function abrirCarrito(){
+  const its=carrito.items;
+  if(!its.length){
+    dlgBody.innerHTML = `<h3>Carrito</h3><p>El carrito está vacío.</p>
+      <p class="small">En la pantalla del precio de cualquier figura (en cabina o cartoon) toca <b>Agregar al carrito</b>. Así puedes juntar varias figuras en una sola cotización.</p>
+      <div class="row-btns" style="margin-top:16px"><button class="btn primary" id="cCerrar">Entendido</button></div>`;
+    if(!dlg.open) dlg.showModal();
+    document.getElementById("cCerrar").onclick=()=>dlg.close(); return;
+  }
+  const tot=carritoTotal(), pct=carrito.desc, m=Math.round(tot*pct/100);
+  dlgBody.innerHTML = `<h3>Carrito · ${its.length} figura${its.length>1?"s":""}</h3>
+    <div class="citems">${its.map(it=>`<div class="citem"><div class="cih"><b>${esc(it.titulo)}</b><span>${money(it.total)}</span></div>
+      <div class="cil">${it.lines.map(l=>`<div class="${l.ind?"ind":""}"><span>${l.ind?"+ ":""}${esc(l.d)}</span><span>${l.v==null?"—":money(l.v)}</span></div>`).join("")}</div>
+      <button class="cquit" data-quitar="${esc(it.id)}">Quitar</button></div>`).join("")}</div>
+    <div class="ctot"><span>Total</span><b>${money(tot)}</b></div>
+    <div class="lbl" style="margin-top:12px">Descuento</div>
+    <div class="chips desc-chips" style="justify-content:flex-start">${chip("Sin descuento",!pct,'data-cdesc="0"')}${DESCUENTOS.map(p=>chip(p+"%",pct===p,`data-cdesc="${p}"`)).join("")}</div>
+    ${pct?`<div class="ctot" style="border-top:0;padding-top:2px;font-size:16px;color:var(--muted)"><span>Descuento ${pct}%</span><span>−${money(m)}</span></div>
+    <div class="ctot final"><span>Precio final</span><b>${money(tot-m)}</b></div>`:""}
+    <button class="btn primary" id="cGen" style="width:100%;margin-top:16px;padding:15px;font-size:18px">Generar cotización</button>
+    <div class="row-btns" style="margin-top:10px"><button class="btn" id="cVaciar">Vaciar carrito</button><button class="btn" id="cMas">Seguir agregando</button></div>`;
+  if(!dlg.open) dlg.showModal();
+  dlgBody.querySelectorAll("[data-quitar]").forEach(b=>b.onclick=()=>{
+    if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Toca otra vez para quitar"; return; }
+    carrito.items=carrito.items.filter(x=>x.id!==b.dataset.quitar); if(!carrito.items.length) carrito.desc=0; guardarCarrito(); abrirCarrito(); });
+  dlgBody.querySelectorAll("[data-cdesc]").forEach(b=>b.onclick=()=>{ carrito.desc=Number(b.dataset.cdesc)||0; guardarCarrito(); abrirCarrito(); });
+  const vb=document.getElementById("cVaciar"); vb.onclick=()=>{
+    if(vb.dataset.armed!=="1"){ vb.dataset.armed="1"; vb.textContent="Toca otra vez para vaciar"; vb.style.color="var(--danger)"; return; }
+    carrito={items:[], desc:0}; guardarCarrito(); dlg.close(); toast("Carrito vacío"); };
+  document.getElementById("cMas").onclick=()=>{ dlg.close(); irAlInicio(); };
+  document.getElementById("cGen").onclick=()=>openQuoteForm(carritoData, {desc:carrito.desc,
+    alTerminar:()=>{ carrito={items:[], desc:0}; guardarCarrito(); }});
 }
 
 /* ===================== Registro de cotizaciones ===================== */
@@ -2206,7 +2305,7 @@ function mailBody(rec){
   L.push(`Hola ${rec.cliente||""},`.trim()); L.push("");
   L.push(`Te enviamos la cotización N° ${rec.numero} de Sharewow:`); L.push("");
   L.push(rec.titulo);
-  rec.lines.forEach(l=>L.push(`${l.ind?"   + ":"- "}${l.d}: ${pdfMoney(l.v)}`));
+  rec.lines.forEach(l=>{ if(l.sec){ L.push("", l.d+":"); return; } L.push(`${l.ind?"   + ":"- "}${l.d}: ${pdfMoney(l.v)}`); });
   L.push("");
   if(rec.desc){ L.push(`Subtotal: ${pdfMoney(rec.subtotal)}`); L.push(`Descuento ${rec.desc}%: -${pdfMoney(rec.descMonto)}`); }
   L.push(`${rec.desc?"PRECIO FINAL":"TOTAL"}: ${pdfMoney(rec.total)}`); L.push("");
