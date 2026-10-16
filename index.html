@@ -547,6 +547,14 @@ async function loadAll(){
     });
     C.precios1016=true;
   }
+  // Más precios nuevos (16-oct-2026, 2ª lista): persona cartoon, persona + mascota y figuras en escena
+  if(C && C.cats && !C.precios1016b){
+    const NUEVOS={p3:{6:55000}, p7:{6:65000,8:100000}, p8:{6:55000,8:88000}, p9:{6:75000,8:98000}, p10:{6:95000,8:118000}, p11:{6:115000,8:148000}};
+    C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ const np=NUEVOS[p.id]; if(!np) return; p.medidas=p.medidas||[];
+      Object.entries(np).forEach(([cm,precio])=>{ cm=Number(cm); const m=p.medidas.find(x=>x.cm===cm); if(m) m.precio=precio; else p.medidas.push({cm,precio}); });
+      p.medidas.sort((a,b)=>a.cm-b.cm); }));
+    C.precios1016b=true;
+  }
   // Marco de foto en relieve: solo "1 persona" tiene estilos (A–E); los otros tipos pasan directo a las medidas
   if(C && C.cats && !C.p22est){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p22"){ p.estilosTipo=p.estilosTipo||{}; ["1 persona realista","1 mascota cartoon","1 mascota realista"].forEach(t=>{ p.estilosTipo[t]=[]; }); } })); C.p22est=true; }
   if(C && C.cats && !C.p20masc){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id==="p20"){ p.estilosTipo=p.estilosTipo||{}; if(!p.estilosTipo["1 persona + 1 mascota"]) p.estilosTipo["1 persona + 1 mascota"]=[]; } })); C.p20masc=true; }
@@ -1603,17 +1611,17 @@ const DEFAULT_C = {
   ],
   cats:[
     {id:"k1",nombre:"Figura cartoon",productos:[
-      CP("p3","1 persona cartoon",MM([4,6,8,10,12,15,18],[22000,44000,88000,135000,205000,398000,783000]),{estilos:[...E10,"Pixar","Semi realista"],detalle:"Sin accesorios",mods:true}),
+      CP("p3","1 persona cartoon",MM([4,6,8,10,12,15,18],[22000,55000,88000,135000,205000,398000,783000]),{estilos:[...E10,"Pixar","Semi realista"],detalle:"Sin accesorios",mods:true}),
       CP("p4","1 mascota cartoon",MM([3,4,5,6],[22000,32000,50000,75000])),
       CP("p5","1 mascota realista",MM([3,4,5,6,10],[22000,32000,50000,92000,254000])),
       CP("p6","2 personas cartoon",MM([6,8,10],[65000,90000,170000]),{estilos:["Lindo","Genial","Arcilla","Lego","Funco","Monstruo","Melancólico"],mods:true}),
-      CP("p7","1 persona + 1 mascota cartoon",MM([6,8,10],[65000,90000,153000]),{estilos:["Lindo","Genial","Melancólico","Arcilla","Dedo","Funco","Monstruo"],mods:true})
+      CP("p7","1 persona + 1 mascota cartoon",MM([6,8,10],[65000,100000,153000]),{estilos:["Lindo","Genial","Melancólico","Arcilla","Dedo","Funco","Monstruo"],mods:true})
     ]},
     {id:"k2",nombre:"Figura cartoon de escena",productos:[
-      CP("p8","1 persona en escena",MM([6,8],[55000,78000])),
-      CP("p9","2 personas en escena",MM([6,8],[70000,95000])),
-      CP("p10","3 personas en escena",MM([6,8],[90000,113000])),
-      CP("p11","4 personas en escena",MM([6,8],[107000,130000])),
+      CP("p8","1 persona en escena",MM([6,8],[55000,88000])),
+      CP("p9","2 personas en escena",MM([6,8],[75000,98000])),
+      CP("p10","3 personas en escena",MM([6,8],[95000,118000])),
+      CP("p11","4 personas en escena",MM([6,8],[115000,148000])),
       CP("p12","1 mascota realista en escena",MM([6,8,10],[100000,137000,254000])),
       CP("p13","1 persona + 1 mascota en escena",MM([6,8],[70000,95000]))
     ]},
@@ -1881,7 +1889,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
