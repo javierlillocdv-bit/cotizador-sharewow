@@ -1,5 +1,6 @@
-/* Guarda las fotos en el equipo para que aparezcan al instante */
+/* Guarda las fotos en el equipo para que aparezcan al instante, y pide siempre la página más nueva */
 const CACHE = "sw-fotos-v1";
+const PAGINA = "sw-pagina-v1";
 const esFoto = u => (u.origin === self.location.origin && u.pathname.includes("/img/") && !u.pathname.endsWith(".json"))
                  || u.pathname.endsWith("/api/foto") || u.hostname === "lh3.googleusercontent.com";
 
@@ -37,6 +38,20 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
   const u = new URL(req.url);
+  // La página: siempre la versión más nueva de internet (sin la copia de 10 min); sin internet, la última guardada
+  if (req.mode === "navigate" && u.origin === self.location.origin) {
+    e.respondWith((async () => {
+      const c = await caches.open(PAGINA);
+      try {
+        const res = await fetch(req.url, {cache: "no-store", credentials: "same-origin"});
+        if (res && res.ok) c.put(u.pathname, res.clone()).catch(() => {});
+        return res;
+      } catch (err) {
+        return (await c.match(u.pathname)) || Response.error();
+      }
+    })());
+    return;
+  }
   if (!esFoto(u)) return;
   e.respondWith((async () => {
     const c = await caches.open(CACHE);

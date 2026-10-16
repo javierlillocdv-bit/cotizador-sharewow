@@ -168,6 +168,8 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .total-box{display:inline-block;border:3px solid var(--ink);border-radius:18px;padding:12px 40px;margin-top:8px;
   font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(64px,12vw,130px);font-weight:600;line-height:1.05}
 .warn-txt{color:var(--danger);font-weight:600;min-height:1em;margin:14px 0 0}
+.aviso-version{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;border:0;border-radius:999px;background:var(--green);color:#fff;
+  font-weight:700;font-size:17px;padding:14px 24px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
 .cartbtn{position:relative}
 .cartn{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;border-radius:11px;background:var(--green);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;padding:0 6px;border:2px solid var(--surface)}
 .cartn[hidden]{display:none}
@@ -498,7 +500,7 @@ function waitFotos(maxMs){
     tick();
   });
 }
-async function enterApp(){ await waitFotos(40000); renderApp(); }
+async function enterApp(){ await waitFotos(40000); renderApp(); setTimeout(revisarVersion, 1500); }
 // Al volver a la app (iPad), fuerza a redibujar toda la pantalla para que no quede a medias
 function repaint(){ try{ const r=document.documentElement; r.style.display="none"; void r.offsetHeight; r.style.display=""; }catch(e){} }
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") requestAnimationFrame(repaint); });
@@ -508,6 +510,28 @@ function registerSW(){
     navigator.serviceWorker.register("sw.js").then(r=>{ try{ r.update(); }catch(e){} }).catch(()=>{});
   } }catch(e){}
 }
+// Versión nueva publicada: GitHub deja la página guardada en el equipo hasta 10 minutos, así que al
+// volver a la app (y cada 5 min) se pregunta si hay una más nueva. Si estás en el inicio se actualiza sola;
+// si estás cotizando, aparece un aviso para actualizar cuando quieras (el carrito no se pierde).
+const PAGINA_FECHA = Date.parse(document.lastModified)||0;
+async function revisarVersion(){
+  try{
+    if(location.protocol==="file:" || !PAGINA_FECHA) return;
+    const r=await fetch(location.pathname, {method:"HEAD", cache:"no-store"});
+    const nueva=Date.parse(r.headers.get("last-modified")||"")||0;
+    if(!nueva || nueva <= PAGINA_FECHA+2000) return;
+    const url=location.pathname+"?v="+nueva;   // dirección distinta: el equipo no puede usar la copia vieja
+    const libre = !path.length && !qview && !editing && !(dlg && dlg.open) && document.getElementById("verCots");
+    let ya=0; try{ ya=Number(sessionStorage.getItem("sw-recarga"))||0; }catch(e){}
+    if(libre && ya!==nueva){ try{ sessionStorage.setItem("sw-recarga", String(nueva)); }catch(e){} location.replace(url); return; }
+    if(!document.getElementById("avisoVersion")){
+      const b=document.createElement("button"); b.id="avisoVersion"; b.className="aviso-version"; b.textContent="Hay una versión nueva · tocar para actualizar";
+      b.onclick=()=>location.replace(url); document.body.appendChild(b);
+    }
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") revisarVersion(); });
+setInterval(revisarVersion, 5*60*1000);
 
 async function loadAll(){
   // Fotos guardadas como archivos en GitHub; se precargan de inmediato
