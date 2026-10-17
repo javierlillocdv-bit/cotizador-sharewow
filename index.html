@@ -610,6 +610,10 @@ async function loadAll(){
     C.precios1017=true;
   }
   // 1 persona + 1 mascota en escena (17-oct-2026)
+  // Colgante o llavero: 1 persona + 1 mascota cartoon 8 cm = $110.000 (igual que la figura)
+  if(C && C.cats && !C.p18oct17){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p18") return; p.medidas=p.medidas||[];
+    const m=p.medidas.find(x=>x.cm===8); if(m) m.precio=110000; else p.medidas.push({cm:8,precio:110000});
+    p.medidas.sort((a,b)=>a.cm-b.cm); })); C.p18oct17=true; }
   if(C && C.cats && !C.p13oct17b){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p13") return; p.medidas=p.medidas||[];
     [[6,80000],[8,115000]].forEach(([cm,precio])=>{ const m=p.medidas.find(x=>x.cm===cm); if(m) m.precio=precio; else p.medidas.push({cm,precio}); });
     p.medidas.sort((a,b)=>a.cm-b.cm); })); C.p13oct17b=true; }
@@ -1689,7 +1693,7 @@ const DEFAULT_C = {
       CP("p15","1 mascota cartoon",MM([4,6],[52000,92000])),
       CP("p16","1 mascota realista",MM([4,6],[52000,92000])),
       CP("p17","2 personas cartoon",MM([6,8],[90000,120000]),{estilos:["Lindo","Genial","Arcilla","Lego","Funco","Monstruo","Melancólico"]}),
-      CP("p18","1 persona + 1 mascota cartoon",MM([6,8],[80000,120000]),{estilos:E7})
+      CP("p18","1 persona + 1 mascota cartoon",MM([6,8],[80000,110000]),{estilos:E7})
     ]},
     {id:"k4",nombre:"Adorno colgante con marco",productos:[
       CP("p19a","Con marco tallado",MM([6,8],[48000,78000]),{tipos:[...T3P,"1 persona con accesorios"]}),
@@ -1948,7 +1952,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17b:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17b:true, p18oct17:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
