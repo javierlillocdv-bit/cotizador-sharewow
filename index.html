@@ -610,6 +610,12 @@ async function loadAll(){
     C.precios1017=true;
   }
   // 1 persona + 1 mascota en escena (17-oct-2026)
+  // Mascotas en cabina (17-oct-2026): 4 cm gato o perro chico, 6 cm perro mediano, 9 cm perro grande
+  if(P && Array.isArray(P.mascotas) && !P.mascotas1017){
+    const N={4:[51000,102000,153000,204000], 6:[99000,198000,297000,396000], 9:[168000,336000,504000,672000]};
+    Object.entries(N).forEach(([cm,v])=>{ cm=Number(cm); let r=P.mascotas.find(x=>x.cm===cm); if(!r){ r={cm}; P.mascotas.push(r); } [r.parado,r.sentado,r.acostado,r.echado]=v; });
+    P.mascotas.sort((a,b)=>a.cm-b.cm); P.mascotas1017=true;
+  }
   // Colgante o llavero: 1 persona + 1 mascota cartoon 8 cm = $110.000 (igual que la figura)
   if(C && C.cats && !C.p18oct17){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p18") return; p.medidas=p.medidas||[];
     const m=p.medidas.find(x=>x.cm===8); if(m) m.precio=110000; else p.medidas.push({cm:8,precio:110000});
@@ -1164,9 +1170,9 @@ const DEFAULT_P = {
   mult:{arrod:1.5, suelo:3},
   pct:{grande:50, chicoSolas:10, chicoUnidas:13},
   mascotas:[
-    {cm:4, parado:44000, sentado:66000, acostado:88000, echado:132000},
-    {cm:6, parado:62000, sentado:93000, acostado:124000, echado:186000},
-    {cm:9, parado:124000, sentado:186000, acostado:248000, echado:372000}
+    {cm:4, parado:51000, sentado:102000, acostado:153000, echado:204000},
+    {cm:6, parado:99000, sentado:198000, acostado:297000, echado:396000},
+    {cm:9, parado:168000, sentado:336000, acostado:504000, echado:672000}
   ],
   mascotaSola:{chica:4, mediana:6, grande:9, gato:4},
   mascotaGrupo:[
