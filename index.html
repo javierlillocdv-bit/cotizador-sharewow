@@ -643,6 +643,9 @@ async function loadAll(){
   // 1 persona cartoon 4 cm = $25.000 (18-oct-2026)
   if(C && C.cats && !C.p3cm4){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p3") return; p.medidas=p.medidas||[];
     const m=p.medidas.find(x=>x.cm===4); if(m) m.precio=25000; else p.medidas.push({cm:4,precio:25000}); p.medidas.sort((a,b)=>a.cm-b.cm); })); C.p3cm4=true; }
+  // Figura con movimiento 4 cm = $44.000 (18-oct-2026)
+  if(C && C.cats && !C.p21cm4){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p21") return; p.medidas=p.medidas||[];
+    const m=p.medidas.find(x=>x.cm===4); if(m) m.precio=44000; else p.medidas.push({cm:4,precio:44000}); p.medidas.sort((a,b)=>a.cm-b.cm); })); C.p21cm4=true; }
   let changed=false;
   walk(menu.tiles, t=>{ if(t.id==="cab2" && !t.tipo){ t.tipo="grupo"; t.encabezado="Centímetros"; t.tallas=[9,12,15,18]; t.maxPersonas=10; t.fuente="cab1"; changed=true; } });
   walk(menu.tiles, t=>{ if(t.id==="cab1" && !t.tipo){ t.tipo="medidas"; t.encabezado="Centímetros"; t.medidas=defaultMedidas(); changed=true; } });
@@ -1720,7 +1723,7 @@ const DEFAULT_C = {
       CP("p20","Figura con marco y fondo",MM([6,8],[48000,78000]),{tipos:[...T3P,"1 persona con accesorios"],estilos:["A","B"],estilosTipo:{"2 personas":[],"1 persona + 1 mascota":[]}})
     ]},
     {id:"k6",nombre:"Figura con movimiento",productos:[
-      CP("p21","Figura cartoon con movimiento",MM([4,6],[34000,88000]),{detalle:"Temblores",estilos:["A","B","C","D","E"]})
+      CP("p21","Figura cartoon con movimiento",MM([4,6],[44000,88000]),{detalle:"Temblores",estilos:["A","B","C","D","E"]})
     ]},
     {id:"k7",nombre:"Adorno relieve 3D",productos:[
       CP("p22","Marco de foto en relieve",MM([6,8],[45000,75000]),{tipos:["1 persona","1 persona realista","1 mascota cartoon","1 mascota realista"],estilos:["A","B","C","D","E"],estilosTipo:{"1 persona realista":[],"1 mascota cartoon":[],"1 mascota realista":[]}}),
@@ -1969,7 +1972,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
