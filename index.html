@@ -240,7 +240,7 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .camb{background:rgba(255,255,255,.95);color:#111;border-radius:12px;padding:8px 12px;font-size:15px;font-weight:700;cursor:pointer}
 .camb.x{color:#C21F4E}
 /* Fondo con líneas y rana */
-.bgdeco{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bgdeco{position:fixed;inset:0;top:0;right:0;bottom:0;left:0;z-index:0;pointer-events:none;overflow:hidden}
 .bgdeco svg{position:absolute}
 .bgdeco .tl{top:0;left:0;width:min(42vw,380px);height:auto}
 .bgdeco .bl{bottom:0;left:0;width:min(34vw,320px);height:auto}
@@ -279,8 +279,8 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .qdel{color:var(--danger)}
 /* Cuadros de inicio: etiqueta verde arriba, imagen en todo el cuadro */
 .tile{padding:0;display:block;overflow:hidden}
-.tile .pic{position:absolute;inset:0;padding:0;display:grid;place-items:center}
-.tile .pic img{position:absolute;inset:0;top:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;border-radius:0}
+.tile .pic{position:absolute;inset:0;top:0;right:0;bottom:0;left:0;padding:0;display:grid;place-items:center}
+.tile .pic img{position:absolute;inset:0;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;border-radius:0}
 .tile .name{position:absolute;z-index:2;top:clamp(14px,2vw,26px);left:50%;transform:translateX(-50%);
   background:var(--green);color:var(--green-ink);border-radius:999px;padding:clamp(10px,1.2vw,16px) clamp(24px,3vw,44px);
   font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:600;font-size:clamp(22px,2.8vw,40px);line-height:1.05;
@@ -291,7 +291,7 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .choice2 .t{position:absolute;z-index:2;top:clamp(12px,1.8vw,22px);left:50%;transform:translateX(-50%);
   background:var(--green);color:var(--green-ink);border-radius:22px;padding:clamp(8px,.9vw,12px) clamp(16px,2vw,28px);
   font-size:clamp(20px,2.3vw,34px);line-height:1.08;width:max-content;max-width:calc(100% - 24px);text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-.choice2 .ci{position:absolute;inset:0;width:100%;height:100%;margin:0}
+.choice2 .ci{position:absolute;inset:0;top:0;right:0;bottom:0;left:0;width:100%;height:100%;margin:0}
 .choice2 .ci img{width:100%;height:100%;object-fit:cover;object-position:center 30%;border-radius:0}
 .choice2 .s{position:absolute;z-index:2;bottom:clamp(12px,1.6vw,20px);left:50%;transform:translateX(-50%);
   background:rgba(10,11,19,.72);color:#fff;opacity:1;border-radius:999px;padding:7px 16px;width:max-content;max-width:calc(100% - 24px);text-align:center;font-size:clamp(15px,1.5vw,20px)}
@@ -305,6 +305,16 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .grid > *{flex:0 0 calc((100% - var(--g))/2);width:calc((100% - var(--g))/2);aspect-ratio:1.13/1}
 .grid > .tile.wide{flex-basis:100%;width:100%;aspect-ratio:auto;min-height:300px}
 @media (max-width:560px){.grid > *,.choices > *{flex-basis:100%;width:100%}}
+/* Chrome antiguo (antes de la versión 88, por ejemplo en tablets sin actualizar) no entiende aspect-ratio:
+   sin esto los cuadros quedan con alto 0 y no se ven. Un relleno invisible les da la misma forma. */
+@supports not (aspect-ratio:1/1){
+  .choices > *::before,.choice2::before{content:"";display:block;padding-top:100%}
+  .grid > *::before{content:"";display:block;padding-top:88.5%}
+  .grid > .tile.wide::before{display:none}
+  .grid,.choices{margin-bottom:var(--g)}
+  .grid > *,.choices > *{margin-bottom:var(--g)}
+  .bgdeco .frogimg{height:calc(min(68vw,600px)*885/756)}
+}
 .top{position:sticky}
 .homebtn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:8px;
   border:0;border-radius:999px;background:var(--green);color:var(--green-ink);font-weight:700;font-size:16px;padding:11px 20px;box-shadow:0 4px 14px rgba(0,0,0,.18);white-space:nowrap}
