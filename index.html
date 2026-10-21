@@ -308,10 +308,8 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 /* Chrome antiguo (antes de la versión 88, por ejemplo en tablets sin actualizar) no entiende aspect-ratio:
    sin esto los cuadros quedan con alto 0 y no se ven. Un relleno invisible les da la misma forma. */
 @supports not (aspect-ratio:1/1){
-  .choices > *::before,.choice2::before{content:"";display:block;padding-top:100%}
-  .grid > *::before{content:"";display:block;padding-top:88.5%}
-  .grid > .tile.wide::before{display:none}
-  .grid,.choices{margin-bottom:var(--g)}
+  /* el alto de cada cuadro lo calcula el programa (ver ajustarAltos); aquí solo los espacios */
+  .grid,.choices{justify-content:space-between;margin-bottom:var(--g)}
   .grid > *,.choices > *{margin-bottom:var(--g)}
   .bgdeco .frogimg{height:calc(min(68vw,600px)*885/756)}
 }
@@ -401,6 +399,27 @@ const imgs = {};               // id -> dataURL
 let path = [];                 // ids de la ruta actual
 let editing = false;
 const root = document.getElementById("root");
+/* Chrome antiguo (antes de la versión 88, como el de la tablet Samsung) no entiende aspect-ratio:
+   los cuadros del inicio y los botones con foto quedaban con alto 0 y no se veían. En esos navegadores
+   el programa calcula el alto de cada cuadro según su ancho, cada vez que cambia la pantalla. */
+const SIN_ASPECT = !(window.CSS && CSS.supports && CSS.supports("aspect-ratio","1/1"));
+let altosPend = false;
+function ajustarAltos(){
+  if(!SIN_ASPECT || altosPend) return; altosPend = true;
+  requestAnimationFrame(()=>{ altosPend = false;
+    const fija = (el, r) => { const w = el.getBoundingClientRect().width; if(w > 0) el.style.height = (w / r) + "px"; };
+    document.querySelectorAll(".grid > .tile:not(.wide), .grid > .add-tile").forEach(el => fija(el, 1.13));
+    document.querySelectorAll(".choices > *").forEach(el => fija(el, 1));
+    document.querySelectorAll(".choice2").forEach(el => { if(!el.parentElement || !el.parentElement.classList.contains("choices")) fija(el, 1/1.02); });
+    document.querySelectorAll(".bgdeco .frogimg").forEach(el => fija(el, 756/885));
+  });
+}
+if(SIN_ASPECT){
+  try{ document.documentElement.classList.add("sin-aspect");
+    new MutationObserver(ajustarAltos).observe(root, {childList:true, subtree:true});
+    window.addEventListener("resize", ajustarAltos); window.addEventListener("orientationchange", ajustarAltos); ajustarAltos();
+  }catch(e){}
+}
 const dlg = document.getElementById("dlg");
 const dlgBody = document.getElementById("dlgBody");
 
