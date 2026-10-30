@@ -686,6 +686,11 @@ async function loadAll(){
   // 1 mascota realista (Figura cartoon): se agrega 8 cm = $152.000 (30-oct-2026)
   if(C && C.cats && !C.p5cm8){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p5") return; p.medidas=p.medidas||[];
     const m=p.medidas.find(x=>x.cm===8); if(m) m.precio=152000; else p.medidas.push({cm:8,precio:152000}); p.medidas.sort((a,b)=>a.cm-b.cm); })); C.p5cm8=true; }
+  // 1 mascota realista: 2 tipos; "Mascota cartoon" con su propia tabla de precios (30-oct-2026)
+  if(C && C.cats && !C.p5tipos){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p5") return;
+    p.tipos=["1 mascota realista","Mascota cartoon"];
+    p.medidasTipo=Object.assign({}, p.medidasTipo||{}, {"Mascota cartoon":[{cm:3,precio:62000},{cm:4,precio:104000},{cm:5,precio:144000},{cm:6,precio:184000}]});
+    p.tipoDetalle=Object.assign({}, p.tipoDetalle||{}, {"Mascota cartoon":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo (sin patas a la vista)"}); })); C.p5tipos=true; }
   let changed=false;
   walk(menu.tiles, t=>{ if(t.id==="cab2" && !t.tipo){ t.tipo="grupo"; t.encabezado="Centímetros"; t.tallas=[9,12,15,18]; t.maxPersonas=10; t.fuente="cab1"; changed=true; } });
   walk(menu.tiles, t=>{ if(t.id==="cab1" && !t.tipo){ t.tipo="medidas"; t.encabezado="Centímetros"; t.medidas=defaultMedidas(); changed=true; } });
@@ -1736,7 +1741,7 @@ const DEFAULT_C = {
     {id:"k1",nombre:"Figura cartoon",productos:[
       CP("p3","1 persona cartoon",MM([4,6,8,10,12,15,18],[25000,55000,85000,135000,205000,398000,783000]),{estilos:[...E10,"Pixar","Semi realista"],detalle:"Sin accesorios",mods:true}),
       CP("p4","1 mascota cartoon",MM([3,4,5,6],[32000,52000,72000,92000])),
-      CP("p5","1 mascota realista",MM([3,4,5,6,8],[32000,52000,72000,92000,152000])),
+      CP("p5","1 mascota realista",MM([3,4,5,6,8],[32000,52000,72000,92000,152000]),{tipos:["1 mascota realista","Mascota cartoon"],medidasTipo:{"Mascota cartoon":MM([3,4,5,6],[62000,104000,144000,184000])},tipoDetalle:{"Mascota cartoon":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo (sin patas a la vista)"}}),
       CP("p6","2 personas cartoon",MM([6,8,10],[90000,120000,170000]),{estilos:["Lindo","Genial","Arcilla","Lego","Funco","Monstruo","Melancólico"],mods:true}),
       CP("p7","1 persona + 1 mascota cartoon",MM([6,8,10],[80000,110000,153000]),{estilos:["Lindo","Genial","Melancólico","Arcilla","Dedo","Funco","Monstruo"],mods:true})
     ]},
@@ -1791,14 +1796,18 @@ function ctCat(){ return C.cats.find(k=>k.id===ct.cat); }
 function ctProd(){ const k=ctCat(); return k ? k.productos.find(p=>p.id===ct.prod) : null; }
 const okP = v => v!=null && !isNaN(v) && v>0;
 function tipoEstilos(p,t){ return (t && p.estilosTipo && Array.isArray(p.estilosTipo[t])) ? p.estilosTipo[t] : (p.estilos||[]); }
-function prodMeds(p){ return (p.medidas||[]).filter(m=>m.cm>0).slice().sort((a,b)=>a.cm-b.cm); }
-function prodDesde(p){ const ps=prodMeds(p).map(m=>m.precio).filter(okP); return ps.length? Math.min(...ps) : null; }
+// Un tipo puede tener su propia tabla de medidas y precios (p.medidasTipo[tipo]); si no, usa la del producto
+function prodMeds(p,t){ const src=(t && p.medidasTipo && Array.isArray(p.medidasTipo[t])) ? p.medidasTipo[t] : p.medidas; return (src||[]).filter(m=>m.cm>0).slice().sort((a,b)=>a.cm-b.cm); }
+function prodDesde(p,t){
+  const tablas = t!==undefined ? [prodMeds(p,t)] : [prodMeds(p)].concat(Object.keys(p.medidasTipo||{}).filter(k=>(p.tipos||[]).includes(k)).map(k=>prodMeds(p,k)));
+  const ps=[].concat(...tablas).map(m=>m.precio).filter(okP); return ps.length? Math.min(...ps) : null; }
+const tipoDet = (p,t) => (t && p.tipoDetalle && p.tipoDetalle[t]) || "";
 function cItemPrice(base,it){ return Math.round(base*((it.g||0)*C.mods.grande + (it.c||0)*C.mods.chico)/100); }
 function prodAcc(p){ return p.acc!=null ? !!p.acc : !SIN_ACC.includes(p.id); }
 function cAccList(){ return (C.accesorios && C.accesorios.length) ? C.accesorios : DEFAULT_C.accesorios; }
 function cAccItems(base){ const out=[]; for(const it of cAccList()){ const q=ct.acc[it.id]||0; if(q>0) out.push({it,q,sub:q*cItemPrice(base,it)}); } return out; }
 function ctCalc(){
-  const p=ctProd(); const m=p && prodMeds(p).find(x=>x.cm===ct.cm);
+  const p=ctProd(); const m=p && prodMeds(p, ct.tipo).find(x=>x.cm===ct.cm);
   const base = m && okP(m.precio) ? m.precio : null;
   if(base==null) return {base:null};
   const mult = p.mods ? (ct.pos==="sentado" ? 1+C.mods.sentado/100 : ct.pos==="piso" ? 1+C.mods.piso/100 : 1) : 1;
@@ -1835,7 +1844,8 @@ function cartoonScreenHTML(node){
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">¿Qué tipo?</div>
       <p class="small" style="margin:-18px 0 22px;font-size:17px">${esc(p.nombre)} · ${p.tipos.length} tipos</p>
-      <div class="choices">${p.tipos.map(t=>{ const et=tipoEstilos(p,t); const sub=[et.length?`${et.length} estilo${et.length>1?"s":""}`:"", prodDesde(p)!=null?"desde "+money(prodDesde(p)):""].filter(Boolean).join(" · "); return bigBtn(t, sub,`data-a="ctipo" data-v="${esc(t)}"`,"ct_tipo_"+p.id+"_"+t); }).join("")}</div></div>`;
+      <div class="choices">${p.tipos.map(t=>{ const et=tipoEstilos(p,t); const sub=[et.length?`${et.length} estilo${et.length>1?"s":""}`:"", prodDesde(p,t)!=null?"desde "+money(prodDesde(p,t)):""].filter(Boolean).join(" · "); return bigBtn(t, sub,`data-a="ctipo" data-v="${esc(t)}"`,"ct_tipo_"+p.id+"_"+t); }).join("")}</div>
+      ${p.tipos.filter(t=>tipoDet(p,t)).map(t=>`<p class="small" style="margin-top:14px;font-size:16px"><b>${esc(t)}:</b> ${esc(tipoDet(p,t))}</p>`).join("")}</div>`;
   }
   if(s==="estilo"){
     const p=ctProd(); if(!p) return "";
@@ -1847,14 +1857,14 @@ function cartoonScreenHTML(node){
   if(s==="cm"){
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">Centímetros</div>
-      <p class="small" style="margin:-18px 0 22px">${esc(p.nombre)}${ct.tipo?" · "+esc(ct.tipo):""}${ct.estilo?" · estilo "+esc(ct.estilo):""}</p>
-      <div class="ovals">${prodMeds(p).map(m=>`<button class="oval" data-a="ccm" data-v="${m.cm}">${esc(cmTxt(m.cm))}</button>`).join("")}</div></div>`;
+      <p class="small" style="margin:-18px 0 22px">${esc(p.nombre)}${ct.tipo&&ct.tipo!==p.nombre?" · "+esc(ct.tipo):""}${ct.estilo?" · estilo "+esc(ct.estilo):""}${tipoDet(p,ct.tipo)?"<br>"+esc(tipoDet(p,ct.tipo)):""}</p>
+      <div class="ovals">${prodMeds(p, ct.tipo).map(m=>`<button class="oval" data-a="ccm" data-v="${m.cm}">${esc(cmTxt(m.cm))}</button>`).join("")}</div></div>`;
   }
   if(s==="res"){
     const p=ctProd(), k=ctCat(); if(!p) return "";
     const c=ctCalc();
     return `<div class="med"><div class="rcm" style="font-family:'Barlow Condensed',Barlow,sans-serif;font-weight:700;font-size:clamp(72px,13vw,140px);line-height:1">${esc(cmTxt(ct.cm))} CM</div>
-      <p class="small" style="font-size:18px;margin:4px 0 18px">${esc(k.nombre)} · ${esc(p.nombre)}${p.detalle?" · "+esc(p.detalle):""}</p>
+      <p class="small" style="font-size:18px;margin:4px 0 18px">${esc(k.nombre)} · ${esc(p.nombre)}${p.detalle?" · "+esc(p.detalle):""}${tipoDet(p,ct.tipo)?"<br><span style=\"font-size:15px\">"+esc(ct.tipo)+": "+esc(tipoDet(p,ct.tipo))+"</span>":""}</p>
       ${tipoEstilos(p,ct.tipo).length?`<div class="sumcard"><div class="sl"><b>Estilo</b><span>${ct.estilo?esc(ct.estilo):"elige uno"}</span></div>
         <div class="chips" style="justify-content:flex-start">${tipoEstilos(p,ct.tipo).map(e=>chip(e,ct.estilo===e,`data-a="estilo" data-v="${esc(e)}"`)).join("")}</div></div>`:""}
       ${p.tipos.length?`<div class="sumcard"><div class="sl"><b>Tipo</b><span>${ct.tipo?esc(ct.tipo):"elige uno"}</span></div>
@@ -1922,14 +1932,16 @@ function bindCartoon(node){
       else if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); };
     if(a==="cat"){ ct.cat=v; const k=ctCat(); if(catDirecta(k)) startProd(k.productos[0].id); else ctGo("prods"); }
     else if(a==="prod"){ startProd(v); }
-    else if(a==="ctipo"){ ct.tipo=v; ct.estilo=null; const p=ctProd(), ms=prodMeds(p);
+    else if(a==="ctipo"){ ct.tipo=v; ct.estilo=null; const p=ctProd(), ms=prodMeds(p, v);
       if(tipoEstilos(p,v).length) ctGo("estilo");
       else if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); }
-    else if(a==="cest"){ ct.estilo=v; const ms=prodMeds(ctProd());
+    else if(a==="cest"){ ct.estilo=v; const ms=prodMeds(ctProd(), ct.tipo);
       if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); }
     else if(a==="ccm"){ ct.cm=Number(v); ct.pos="pie"; ct.acc={}; ctGo("res"); }
     else if(a==="estilo"){ ct.estilo = ct.estilo===v ? null : v; renderApp(); }
-    else if(a==="tipo"){ ct.tipo = ct.tipo===v ? null : v; const pp=ctProd(); if(pp && ct.estilo && !tipoEstilos(pp,ct.tipo).includes(ct.estilo)) ct.estilo=null; renderApp(); }
+    else if(a==="tipo"){ ct.tipo = ct.tipo===v ? null : v; const pp=ctProd(); if(pp && ct.estilo && !tipoEstilos(pp,ct.tipo).includes(ct.estilo)) ct.estilo=null;
+      // si el tipo nuevo tiene otra tabla de precios y no tiene esta medida, se vuelve a elegir la medida
+      if(pp && !prodMeds(pp, ct.tipo).some(m=>m.cm===ct.cm)){ ct.acc={}; ctGo("cm"); } else renderApp(); }
     else if(a==="cpos"){ ct.pos=v; renderApp(); }
     else if(a==="cacc"){ ctGo("acc"); }
     else if(a==="cext"){ ctGo("ext"); }
@@ -2012,12 +2024,12 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true, p5tipos:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
         productos:k.productos.filter(p=>String(p.nombre||"").trim()).map(p=>({id:p.id||uid(), nombre:String(p.nombre).trim(), detalle:String(p.detalle||"").trim(),
-          estilos:list(p._estilos), tipos:list(p._tipos), mods:!!p.mods, acc:prodAcc(p), ...(p.estilosTipo?{estilosTipo:p.estilosTipo}:{}),
+          estilos:list(p._estilos), tipos:list(p._tipos), mods:!!p.mods, acc:prodAcc(p), ...(p.medidasTipo?{medidasTipo:p.medidasTipo}:{}), ...(p.tipoDetalle?{tipoDetalle:p.tipoDetalle}:{}), ...(p.estilosTipo?{estilosTipo:p.estilosTipo}:{}),
           medidas:p.medidas.filter(m=>n(m.cm)>0).map(m=>({cm:m.cm, precio:n(m.precio)})).sort((a,b)=>a.cm-b.cm)}))}))
     };
     C=out; saveCartoon(); ct.draft=null; editing=false; renderApp(); window.scrollTo(0,0); toast("Precios guardados");
@@ -2066,7 +2078,7 @@ function cabLines(){
 }
 function ctLines(){
   const p=ctProd(), k=ctCat(), c=ctCalc(), L=[];
-  const det=[`${cmTxt(ct.cm)} cm`]; if(ct.estilo) det.push("estilo "+ct.estilo); if(ct.tipo) det.push(ct.tipo); if(p.mods&&ct.pos!=="pie") det.push(CPOS_TXT[ct.pos]);
+  const det=[`${cmTxt(ct.cm)} cm`]; if(ct.estilo) det.push("estilo "+ct.estilo); if(ct.tipo && ct.tipo!==p.nombre) det.push(ct.tipo); if(p.mods&&ct.pos!=="pie") det.push(CPOS_TXT[ct.pos]);
   L.push({d:`${p.nombre} · ${det.join(" · ")}`, v:c.fig});
   (c.items||[]).forEach(x=>L.push({d:`${x.it.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub, ind:true}));
   extItems({ext:ct.ext||{}}).forEach(x=>L.push({d:`${x.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub}));
@@ -2718,6 +2730,12 @@ function qpGrupoSecs(){
 const qpNotaGrupo = ()=>"El más alto se cobra con la medida elegida; los demás en proporción a su estatura, subiendo a la medida siguiente.";
 function qpMascota(razas){ return razas.map(k=>{ const cm=P.mascotaSola[k]||4; return {titulo:`${RAZA_TXT[k]} · ${cmTxt(cm)} cm`, filas: PPOS.map(pos=>[PPOS_TXT[pos], petPrice(cm,pos)])}; }); }
 
+function qpProdSecs(p, titulo, soloTipo){
+  const propios = (p.tipos||[]).filter(t=>p.medidasTipo && Array.isArray(p.medidasTipo[t]));
+  if(!propios.length) return [qpProdSec(p, titulo)];
+  const tipos = soloTipo ? [soloTipo] : p.tipos;
+  return tipos.map(t=>({titulo: titulo==="" ? t : p.nombre+" · "+t, filas: prodMeds(p,t).map(m=>[cmRow(m.cm), m.precio])}));
+}
 function qpProdSec(p, titulo){
   const bits=[]; if(p.estilos&&p.estilos.length) bits.push(`${p.estilos.length} estilo${p.estilos.length>1?"s":""}`); if(p.tipos&&p.tipos.length) bits.push(`${p.tipos.length} tipos`);
   return {titulo: titulo!=null ? titulo : p.nombre+(bits.length?" · "+bits.join(" · "):""), filas: prodMeds(p).map(m=>[cmRow(m.cm), m.precio])};
@@ -2745,7 +2763,7 @@ function qpCabinaTodo(){
   return {titulo:"Figuras en cabina", sub:"Lista de precios", secciones:secs, notas:[qpNotaPos(), qpNotaAcc(), qpNotaGrupo()]};
 }
 function qpCartoonTodo(){
-  const secs=[]; C.cats.forEach(k=>k.productos.forEach(p=>secs.push({grupo:k.nombre, ...qpProdSec(p)})));
+  const secs=[]; C.cats.forEach(k=>k.productos.forEach(p=>qpProdSecs(p).forEach(x=>secs.push({grupo:k.nombre, ...x}))));
   return {titulo:"Figuras cartoon", sub:"Lista de precios", secciones:secs, notas:[qpNotaMods()+" (figuras de personas)", qpNotaCAcc()]};
 }
 function qpInfo(el){
@@ -2765,12 +2783,12 @@ function qpInfo(el){
   if(a==="raza" && RAZA_TXT[v]) return {titulo:RAZA_TXT[v], sub:"Mascota sola · Figuras en cabina", secciones:qpMascota([v]), notas:[]};
   if(a==="mpos" && cab.q && cab.q.raza) return {titulo:RAZA_TXT[cab.q.raza], sub:"Mascota sola · Figuras en cabina", secciones:qpMascota([cab.q.raza]), notas:[]};
   if(a==="cat"){ const k=C.cats.find(x=>x.id===v); if(!k) return null;
-    return {titulo:k.nombre, sub:`Figuras cartoon · ${k.productos.length} opci${k.productos.length===1?"ón":"ones"}`, secciones:k.productos.map(p=>qpProdSec(p)), notas:qpCatNotas(k)}; }
+    return {titulo:k.nombre, sub:`Figuras cartoon · ${k.productos.length} opci${k.productos.length===1?"ón":"ones"}`, secciones:[].concat(...k.productos.map(p=>qpProdSecs(p))), notas:qpCatNotas(k)}; }
   if(a==="prod"){ const k=ctCat(), p=k&&k.productos.find(x=>x.id===v); if(!p) return null;
-    return {titulo:p.nombre, sub:k.nombre, secciones:[qpProdSec(p,"")], notas:qpProdNotas(p)}; }
+    return {titulo:p.nombre, sub:k.nombre, secciones:qpProdSecs(p,""), notas:qpProdNotas(p)}; }
   if(a==="ctipo"||a==="cest"){ const k=ctCat(), p=ctProd(); if(!p) return null;
     const extra = a==="cest" ? (ct.tipo?ct.tipo+" · ":"")+"estilo "+v : v;
-    return {titulo:p.nombre, sub:`${k.nombre} · ${extra}`, secciones:[qpProdSec(p,"")], notas:qpProdNotas(p, a==="ctipo" ? v : ct.tipo)}; }
+    return {titulo:p.nombre, sub:`${k.nombre} · ${extra}`, secciones:qpProdSecs(p,"", a==="ctipo" ? v : ct.tipo), notas:qpProdNotas(p, a==="ctipo" ? v : ct.tipo)}; }
   return null;
 }
 function qpHTML(info){
