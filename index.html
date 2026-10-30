@@ -168,6 +168,9 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .total-box{display:inline-block;border:3px solid var(--ink);border-radius:18px;padding:12px 40px;margin-top:8px;
   font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(64px,12vw,130px);font-weight:600;line-height:1.05}
 .warn-txt{color:var(--danger);font-weight:600;min-height:1em;margin:14px 0 0}
+/* Texto bajo "Centímetros" y bajo la medida grande (X CM): más grande y en negrita */
+.subcm{font-size:clamp(19px,2.4vw,24px);font-weight:700;color:var(--ink);line-height:1.35;margin:-14px 0 24px;text-align:center}
+.subcm.res{margin:6px 0 18px}
 .aviso-version{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;border:0;border-radius:999px;background:var(--green);color:#fff;
   font-weight:700;font-size:17px;padding:14px 24px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
 .cartbtn{position:relative}
@@ -1129,7 +1132,7 @@ function grupoHTML(node){
   }
   // Paso 1: medida del más alto
   return `<div class="med"><div class="pillhead">${esc(node.encabezado||"Centímetros")}</div>
-    <p class="small" style="margin:-18px 0 22px">Medida de la figura de la persona más alta</p>
+    <p class="subcm">Medida de la figura de la persona más alta</p>
     ${tallas.length?`<div class="ovals">${tallas.map(cm=>`<button class="oval" data-size="${cm}">${esc(cmTxt(cm))}</button>`).join("")}</div>`
       :`<div class="empty">Aún no hay medidas. Toca <b>Editar</b> para añadirlas.</div>`}</div>`;
 }
@@ -1191,7 +1194,7 @@ function fijoHTML(node){
   const p=fijoPrecio(node), extra=accSum(med.acc);
   return `<div class="result">
     <div class="rcm">${esc(cmTxt(node.cm))} CM</div>
-    ${node.nota?`<div class="small" style="font-size:20px">${esc(node.nota)}</div>`:""}
+    ${node.nota?`<div class="subcm res">${esc(node.nota)}</div>`:""}
     ${p!=null?`<div class="rprice">${money(p+extra)}</div>`:`<div class="rnone">Aún no tiene precio. Ponlo con Editar.</div>`}
     ${p!=null&&extra?`<div class="small" style="font-size:18px;margin-top:6px">Figura ${money(p)} + accesorios ${money(extra)}</div>`:""}
     <div style="margin-top:22px">${accLineHTML(med.acc,'id="xAcc"').replace('class="accline"','class="accline" style="justify-content:center;padding-left:0"')}</div>
@@ -1453,7 +1456,7 @@ function cabScreenHTML(node){
       ${bigBtn("Bebé sentado en el piso","Proporción ideal 4 cm",'data-a="tabla" data-v="bebe"',"cab_bebe")}</div></div>`;
 
   if(s==="cm") return `<div class="med"><div class="pillhead">Centímetros</div>
-      <p class="small" style="margin:-18px 0 22px">${esc(TABLA_TXT[q.tabla])}</p>
+      <p class="subcm">${esc(TABLA_TXT[q.tabla])}</p>
       <div class="ovals">${tbl("solas",q.tabla).map(r=>`<button class="oval" data-a="cm" data-v="${r.cm}">${esc(cmTxt(r.cm))}</button>`).join("")}</div></div>`;
 
   if(s==="res1"){
@@ -1461,7 +1464,7 @@ function cabScreenHTML(node){
     if(c.base==null) return `<div class="empty">Esta medida no tiene precio. Ponlo con Editar.</div>`;
     const items=accItems(q.acc,c.base,false);
     return `<div class="med"><div class="rcm" style="font-family:'Barlow Condensed',Barlow,sans-serif;font-weight:700;font-size:clamp(72px,13vw,140px);line-height:1">${esc(cmTxt(q.cm))} CM</div>
-      <p class="small" style="font-size:18px;margin:4px 0 18px">${esc(TABLA_TXT[q.tabla])}</p>
+      <p class="subcm res">${esc(TABLA_TXT[q.tabla])}</p>
       <div class="sumcard">
         <div class="sl"><b>Figura${q.tabla!=="bebe"&&q.pos!=="pie"?" · "+esc(POS_TXT[q.pos]):""}</b><span>${money(c.fig)}</span></div>
         ${q.tabla!=="bebe"?`<div class="chips">${Object.keys(POS_TXT).map(k=>chip(POS_TXT[k],q.pos===k,`data-a="pos" data-v="${k}"`)).join("")}</div>`:""}
@@ -1479,7 +1482,7 @@ function cabScreenHTML(node){
   }
 
   if(s==="gsize") return `<div class="med"><div class="pillhead">Centímetros</div>
-      <p class="small" style="margin:-18px 0 22px">Medida de la figura de la persona más alta</p>
+      <p class="subcm">Medida de la figura de la persona más alta</p>
       <div class="ovals">${(P.grupo.tallas||[]).map(t=>`<button class="oval" data-a="gsize" data-v="${t}">${esc(cmTxt(t))}</button>`).join("")}</div></div>`;
 
   if(s==="gn") return `<div class="med"><div class="pillhead">${esc(cmTxt(q.size))} CM</div>
@@ -1501,7 +1504,7 @@ function cabScreenHTML(node){
   if(s==="gres"){
     const c=calcGrupo(q);
     return `<div class="med"><div class="pillhead">${q.n} persona${q.n>1?"s":""}${q.pets.length?" + "+q.pets.length+" mascota"+(q.pets.length>1?"s":""):""} · ${esc(cmTxt(q.size))} cm</div>
-      <p class="small" style="margin:-18px 0 16px;font-size:16px">${c.tablaGrupo==="bajo"?"Precios de figuras unidas · todos miden hasta 1,40 m":"Precios de figuras unidas"}</p>
+      <p class="subcm" style="margin-bottom:16px">${c.tablaGrupo==="bajo"?"Precios de figuras unidas · todos miden hasta 1,40 m":"Precios de figuras unidas"}</p>
       <div class="sumcard">${c.per.map(r=>{
         const items = r.base!=null ? accItems(q.per[r.i].acc,r.base,true) : [];
         return `<div class="pblock">
@@ -1860,14 +1863,14 @@ function cartoonScreenHTML(node){
   if(s==="cm"){
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">Centímetros</div>
-      <p class="small" style="margin:-14px 0 24px;font-size:clamp(19px,2.4vw,24px);font-weight:700;color:var(--ink);line-height:1.35">${esc(nombreConTipo(p,ct.tipo))}${ct.estilo?" · estilo "+esc(ct.estilo):""}${tipoDet(p,ct.tipo)?"<br>"+esc(tipoDet(p,ct.tipo)):""}</p>
+      <p class="subcm">${esc(nombreConTipo(p,ct.tipo))}${ct.estilo?" · estilo "+esc(ct.estilo):""}${tipoDet(p,ct.tipo)?"<br>"+esc(tipoDet(p,ct.tipo)):""}</p>
       <div class="ovals">${prodMeds(p, ct.tipo).map(m=>`<button class="oval" data-a="ccm" data-v="${m.cm}">${esc(cmTxt(m.cm))}</button>`).join("")}</div></div>`;
   }
   if(s==="res"){
     const p=ctProd(), k=ctCat(); if(!p) return "";
     const c=ctCalc();
     return `<div class="med"><div class="rcm" style="font-family:'Barlow Condensed',Barlow,sans-serif;font-weight:700;font-size:clamp(72px,13vw,140px);line-height:1">${esc(cmTxt(ct.cm))} CM</div>
-      <p class="small" style="font-size:18px;margin:4px 0 18px">${esc(k.nombre)} · ${esc(p.nombre)}${p.detalle?" · "+esc(p.detalle):""}${tipoDet(p,ct.tipo)?"<br><span style=\"font-size:15px\">"+esc(ct.tipo)+": "+esc(tipoDet(p,ct.tipo))+"</span>":""}</p>
+      <p class="subcm res">${esc(k.nombre)} · ${esc(p.nombre)}${p.detalle?" · "+esc(p.detalle):""}${tipoDet(p,ct.tipo)?"<br>"+esc(ct.tipo)+": "+esc(tipoDet(p,ct.tipo)):""}</p>
       ${tipoEstilos(p,ct.tipo).length?`<div class="sumcard"><div class="sl"><b>Estilo</b><span>${ct.estilo?esc(ct.estilo):"elige uno"}</span></div>
         <div class="chips" style="justify-content:flex-start">${tipoEstilos(p,ct.tipo).map(e=>chip(e,ct.estilo===e,`data-a="estilo" data-v="${esc(e)}"`)).join("")}</div></div>`:""}
       ${p.tipos.length?`<div class="sumcard"><div class="sl"><b>Tipo</b><span>${ct.tipo?esc(ct.tipo):"elige uno"}</span></div>
