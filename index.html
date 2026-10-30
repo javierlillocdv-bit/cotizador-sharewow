@@ -173,6 +173,21 @@ dialog::backdrop{background:rgba(10,11,19,.55)}
 .subcm.res{margin:6px 0 18px}
 .aviso-version{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;border:0;border-radius:999px;background:var(--green);color:#fff;
   font-weight:700;font-size:17px;padding:14px 24px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
+/* Aviso de actualización con la lista de lo nuevo */
+.nov-fondo{position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.nov-card{background:var(--surface);color:var(--ink);border-radius:24px;border-top:8px solid var(--green);padding:26px 28px 20px;width:100%;max-width:620px;
+  max-height:calc(100vh - 32px);overflow:auto;-webkit-overflow-scrolling:touch;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.nov-card h2{margin:0;font-family:"Barlow Condensed",Barlow,sans-serif;font-size:clamp(30px,4vw,40px);font-weight:700;text-align:center;color:var(--green-dark)}
+.nov-fecha{margin:12px 0 0;color:var(--muted);font-weight:600;font-size:16px;text-align:center}
+.nov-lista{margin:8px 0 0;padding:0;list-style:none}
+.nov-lista li{position:relative;padding:11px 0 11px 40px;font-size:clamp(18px,2.2vw,21px);line-height:1.35;border-bottom:1px solid var(--line)}
+.nov-lista li:last-child{border-bottom:0}
+.nov-lista li::before{content:"✓";position:absolute;left:2px;top:11px;width:26px;height:26px;border-radius:50%;background:var(--green);color:var(--green-ink);
+  font-weight:800;font-size:15px;line-height:26px;text-align:center}
+.nov-botones{display:flex;flex-direction:column;align-items:center;margin-top:18px}
+.nov-ok{border:0;border-radius:999px;background:var(--green);color:var(--green-ink);font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700;
+  font-size:clamp(26px,3.4vw,32px);padding:14px 60px;min-width:260px;box-shadow:0 8px 20px rgba(59,179,62,.35);cursor:pointer}
+.nov-luego{border:0;background:none;color:var(--muted);font-size:17px;font-weight:600;margin-top:10px;padding:8px 18px;text-decoration:underline;cursor:pointer}
 .cartbtn{position:relative}
 .cartn{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;border-radius:11px;background:var(--green);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;padding:0 6px;border:2px solid var(--surface)}
 .cartn[hidden]{display:none}
@@ -532,7 +547,7 @@ function waitFotos(maxMs){
     tick();
   });
 }
-async function enterApp(){ await waitFotos(40000); renderApp(); setTimeout(revisarVersion, 1500); }
+async function enterApp(){ await waitFotos(40000); renderApp(); APP_DENTRO=true; setTimeout(revisarVersion, 1500); }
 // Al volver a la app (iPad), fuerza a redibujar toda la pantalla para que no quede a medias
 function repaint(){ try{ const r=document.documentElement; r.style.display="none"; void r.offsetHeight; r.style.display=""; }catch(e){} }
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") requestAnimationFrame(repaint); });
@@ -543,23 +558,63 @@ function registerSW(){
   } }catch(e){}
 }
 // Versión nueva publicada: GitHub deja la página guardada en el equipo hasta 10 minutos, así que al
-// volver a la app (y cada 5 min) se pregunta si hay una más nueva. Si estás en el inicio se actualiza sola;
-// si estás cotizando, aparece un aviso para actualizar cuando quieras (el carrito no se pierde).
+// volver a la app (y cada 5 min) se pregunta si hay una más nueva. Si la hay, aparece un aviso con lo nuevo
+// (novedades.json) y el botón "Actualizar" (el carrito no se pierde). Si la app se abrió ya actualizada,
+// se muestra lo nuevo una vez con el botón "Entendido".
+// AL PUBLICAR UN CAMBIO: agregar en novedades.json una entrada con n = NOV_VERSION+1 y subir NOV_VERSION.
 const PAGINA_FECHA = Date.parse(document.lastModified)||0;
+const NOV_VERSION = 1;                       // última novedad que ya trae esta página
+const LS_NOV = "sw-novedades-visto";
+let APP_DENTRO = false;
+async function leerNovedades(){
+  try{ const r=await fetch("novedades.json?t="+Date.now(), {cache:"no-store"}); if(!r.ok) return [];
+    const d=await r.json(); return (Array.isArray(d)?d:[]).filter(x=>x && Number(x.n)>0); }catch(e){ return []; }
+}
+const avisoAbierto = () => !!(document.getElementById("novPanel") || document.getElementById("avisoVersion"));
+function hayVentana(){ const q=document.getElementById("qp"); return !!((dlg && dlg.open) || (q && q.open) || editing); }
+function cerrarNovedades(){ const w=document.getElementById("novPanel"); if(w) w.remove(); }
+function panelNovedades(titulo, lista, botones){
+  cerrarNovedades();
+  const items = lista.length ? lista : [{cambios:["Mejoras y correcciones."]}];
+  const w=document.createElement("div"); w.id="novPanel"; w.className="nov-fondo";
+  w.innerHTML=`<div class="nov-card" role="dialog" aria-modal="true" aria-labelledby="novTit"><h2 id="novTit">${esc(titulo)}</h2>
+    ${items.map(x=>`${x.fecha?`<p class="nov-fecha">${esc(x.fecha)}</p>`:""}<ul class="nov-lista">${(x.cambios||[]).map(c=>`<li>${esc(c)}</li>`).join("")}</ul>`).join("")}
+    <div class="nov-botones"></div></div>`;
+  const cont=w.querySelector(".nov-botones");
+  botones.forEach(([txt,cls,fn])=>{ const b=document.createElement("button"); b.type="button"; b.className=cls; b.textContent=txt; b.onclick=fn; cont.appendChild(b); });
+  document.body.appendChild(w);
+}
+function botonFlotante(url){
+  if(document.getElementById("avisoVersion")) return;
+  const b=document.createElement("button"); b.id="avisoVersion"; b.className="aviso-version"; b.textContent="Hay una actualización · tocar aquí";
+  b.onclick=()=>{ b.remove(); mostrarActualizacion(url); }; document.body.appendChild(b);
+}
+async function mostrarActualizacion(url){
+  if(hayVentana()){ botonFlotante(url); return; }   // con el carrito o el precio rápido abiertos, el aviso grande quedaría detrás
+  const todas=await leerNovedades();
+  const nuevas=todas.filter(x=>Number(x.n)>NOV_VERSION).sort((a,b)=>b.n-a.n).slice(0,3);
+  const ultima=Math.max(NOV_VERSION, ...todas.map(x=>Number(x.n)));
+  panelNovedades("Hay una actualización", nuevas, [
+    ["Actualizar","nov-ok",()=>{ lsSet(LS_NOV,String(ultima)); location.replace(url); }],
+    ["Más tarde","nov-luego",()=>{ cerrarNovedades(); botonFlotante(url); }]
+  ]);
+}
+async function novedadesAlEntrar(){
+  const visto=Number(lsGet(LS_NOV))||0;
+  if(visto>=NOV_VERSION || avisoAbierto() || hayVentana()) return;
+  const lista=(await leerNovedades()).filter(x=>Number(x.n)>visto && Number(x.n)<=NOV_VERSION).sort((a,b)=>b.n-a.n).slice(0,3);
+  if(!lista.length || avisoAbierto() || hayVentana()) return;
+  panelNovedades("La app se actualizó", lista, [["Entendido","nov-ok",()=>{ lsSet(LS_NOV,String(NOV_VERSION)); cerrarNovedades(); }]]);
+}
 async function revisarVersion(){
   try{
-    if(location.protocol==="file:" || !PAGINA_FECHA) return;
+    if(location.protocol==="file:" || !PAGINA_FECHA || !APP_DENTRO || root.querySelector(".lock")) return;
+    if(avisoAbierto()) return;
     const r=await fetch(location.pathname, {method:"HEAD", cache:"no-store"});
     const nueva=Date.parse(r.headers.get("last-modified")||"")||0;
-    if(!nueva || nueva <= PAGINA_FECHA+2000) return;
-    const url=location.pathname+"?v="+nueva;   // dirección distinta: el equipo no puede usar la copia vieja
-    const libre = !path.length && !qview && !editing && !(dlg && dlg.open) && document.getElementById("verCots");
-    let ya=0; try{ ya=Number(sessionStorage.getItem("sw-recarga"))||0; }catch(e){}
-    if(libre && ya!==nueva){ try{ sessionStorage.setItem("sw-recarga", String(nueva)); }catch(e){} location.replace(url); return; }
-    if(!document.getElementById("avisoVersion")){
-      const b=document.createElement("button"); b.id="avisoVersion"; b.className="aviso-version"; b.textContent="Hay una versión nueva · tocar para actualizar";
-      b.onclick=()=>location.replace(url); document.body.appendChild(b);
-    }
+    if(!nueva || nueva <= PAGINA_FECHA+2000){ novedadesAlEntrar(); return; }
+    if(avisoAbierto()) return;
+    mostrarActualizacion(location.pathname+"?v="+nueva);   // dirección distinta: el equipo no puede usar la copia vieja
   }catch(e){}
 }
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") revisarVersion(); });

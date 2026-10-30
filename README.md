@@ -15,3 +15,9 @@ Variables en Netlify (Site configuration → Environment variables): `TITAN_USUA
 y, opcional, `CLAVE_APP` (patrón inicial como números de los puntos: 1 2 3 / 4 5 6 / 7 8 9).
 
 Los datos de los clientes, la clave y la contraseña del correo no se guardan en este repositorio.
+
+## Novedades (aviso "Actualizar")
+Cada vez que se publica un cambio, agregar una entrada en `novedades.json` con `n` = `NOV_VERSION` + 1
+(lista de cambios en palabras simples) y subir `NOV_VERSION` en `index.html` al mismo número.
+La app muestra esa lista con el botón **Actualizar** en los equipos que tienen la versión anterior abierta,
+y con el botón **Entendido** en los que abren la app ya actualizada.
