@@ -565,7 +565,7 @@ function registerSW(){
 // se muestra lo nuevo una vez con el botón "Entendido".
 // AL PUBLICAR UN CAMBIO: agregar en novedades.json una entrada con n = NOV_VERSION+1 y subir NOV_VERSION.
 const PAGINA_FECHA = Date.parse(document.lastModified)||0;
-const NOV_VERSION = 9;                       // última novedad que ya trae esta página
+const NOV_VERSION = 10;                       // última novedad que ya trae esta página
 const LS_NOV = "sw-novedades-visto";
 let APP_DENTRO = false;
 async function leerNovedades(){
@@ -789,6 +789,15 @@ async function loadAll(){
         p.medidasTipo=Object.assign({}, p.medidasTipo||{}, {[R+SP]:mm([3,4,5],[96000,156000,216000])});
         const F={Parado:[32000,52000,72000,92000], Sentado:[64000,104000,144000,184000], Acostado:[96000,156000,216000,276000], Echado:[128000,208000,288000,368000]};
         p.medidasPose=Object.assign({}, p.medidasPose||{}); Object.keys(F).forEach(x=>{ p.medidasPose[R+"|"+x]=mm([3,4,5,6],F[x]); }); } })); C.llaveroMax1=true; }
+  // 1 mascota realista: precios nuevos por pose y sin piernas (21-nov-2026). Llavero = figura hasta 6 cm (poses) y 5 cm (sin piernas)
+  if(C && C.cats && !C.posesPrecios2){ const mm=(sz,f)=>sz.map((cm,i)=>({cm,precio:f[i]})), R="1 mascota realista", SP=" (sin piernas a la vista)";
+    const F={Parado:[32000,52000,72000,92000,152000], Sentado:[48000,78000,108000,138000,228000], Acostado:[96000,156000,216000,276000,456000], Echado:[64000,104000,144000,184000,304000]};
+    const CUY=[64000,104000,144000,184000,304000], SZ=[3,4,5,6,8];
+    C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ const n = p.id==="p5" ? 5 : p.id==="p16" ? 4 : 0; if(!n) return;
+      p.medidasPose=Object.assign({}, p.medidasPose||{}); Object.keys(F).forEach(x=>{ p.medidasPose[R+"|"+x]=mm(SZ.slice(0,n),F[x].slice(0,n)); });
+      p.medidas=mm(SZ.slice(0,n),F.Parado.slice(0,n));
+      const nc = p.id==="p5" ? 5 : 3;
+      p.medidasTipo=Object.assign({}, p.medidasTipo||{}, {[R+SP]:mm(SZ.slice(0,nc),CUY.slice(0,nc))}); })); C.posesPrecios2=true; }
   let changed=false;
   walk(menu.tiles, t=>{ if(t.id==="cab2" && !t.tipo){ t.tipo="grupo"; t.encabezado="Centímetros"; t.tallas=[9,12,15,18]; t.maxPersonas=10; t.fuente="cab1"; changed=true; } });
   walk(menu.tiles, t=>{ if(t.id==="cab1" && !t.tipo){ t.tipo="medidas"; t.encabezado="Centímetros"; t.medidas=defaultMedidas(); changed=true; } });
@@ -1843,7 +1852,7 @@ const DEFAULT_C = {
     {id:"k1",nombre:"Figura cartoon",productos:[
       CP("p3","1 persona cartoon",MM([4,6,8,10,12,15,18],[25000,55000,85000,135000,205000,398000,783000]),{estilos:[...E10,"Pixar","Semi realista"],detalle:"Sin accesorios",mods:true}),
       CP("p4","1 mascota cartoon",MM([3,4,5,6],[32000,52000,72000,92000]),{tipos:["1 mascota cartoon","1 mascota cartoon (sin piernas a la vista)"],medidasTipo:{"1 mascota cartoon (sin piernas a la vista)":MM([3,4,5,6],[62000,104000,144000,184000])},tipoDetalle:{"1 mascota cartoon (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"}}),
-      CP("p5","1 mascota realista",MM([3,4,5,6,8],[32000,52000,72000,92000,152000]),{tipos:["1 mascota realista","1 mascota realista (sin piernas a la vista)"],medidasTipo:{"1 mascota realista (sin piernas a la vista)":MM([3,4,5,6,8],[96000,156000,216000,276000,456000])},tipoDetalle:{"1 mascota realista (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"},posesTipo:{"1 mascota realista":POSES4},medidasPose:MP("1 mascota realista",[3,4,5,6,8],[[32000,52000,72000,92000,152000],[64000,104000,144000,184000,304000],[96000,156000,216000,276000,456000],[128000,208000,288000,368000,608000]])}),
+      CP("p5","1 mascota realista",MM([3,4,5,6,8],[32000,52000,72000,92000,152000]),{tipos:["1 mascota realista","1 mascota realista (sin piernas a la vista)"],medidasTipo:{"1 mascota realista (sin piernas a la vista)":MM([3,4,5,6,8],[64000,104000,144000,184000,304000])},tipoDetalle:{"1 mascota realista (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"},posesTipo:{"1 mascota realista":POSES4},medidasPose:MP("1 mascota realista",[3,4,5,6,8],[[32000,52000,72000,92000,152000],[48000,78000,108000,138000,228000],[96000,156000,216000,276000,456000],[64000,104000,144000,184000,304000]])}),
       CP("p6","2 personas cartoon",MM([6,8,10],[90000,120000,170000]),{estilos:["Lindo","Genial","Arcilla","Lego","Funco","Monstruo","Melancólico"],mods:true}),
       CP("p7","1 persona + 1 mascota cartoon",MM([6,8,10],[80000,110000,153000]),{estilos:["Lindo","Genial","Melancólico","Arcilla","Dedo","Funco","Monstruo"],mods:true})
     ]},
@@ -1858,7 +1867,7 @@ const DEFAULT_C = {
     {id:"k3",nombre:"Colgante o llavero",productos:[
       CP("p14","1 persona cartoon",MM([4,6,8],[22000,55000,85000]),{estilos:[...E10,"Pixar"],detalle:"Sin accesorios"}),
       CP("p15","1 mascota cartoon",MM([3,4,5,6],[32000,52000,72000,92000]),{tipos:["1 mascota cartoon","1 mascota cartoon (sin piernas a la vista)"],medidasTipo:{"1 mascota cartoon (sin piernas a la vista)":MM([3,4,5],[62000,104000,144000])},tipoDetalle:{"1 mascota cartoon (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"}}),
-      CP("p16","1 mascota realista",MM([3,4,5,6],[32000,52000,72000,92000]),{tipos:["1 mascota realista","1 mascota realista (sin piernas a la vista)"],medidasTipo:{"1 mascota realista (sin piernas a la vista)":MM([3,4,5],[96000,156000,216000])},tipoDetalle:{"1 mascota realista (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"},posesTipo:{"1 mascota realista":POSES4},medidasPose:MP("1 mascota realista",[3,4,5,6],[[32000,52000,72000,92000],[64000,104000,144000,184000],[96000,156000,216000,276000],[128000,208000,288000,368000]])}),
+      CP("p16","1 mascota realista",MM([3,4,5,6],[32000,52000,72000,92000]),{tipos:["1 mascota realista","1 mascota realista (sin piernas a la vista)"],medidasTipo:{"1 mascota realista (sin piernas a la vista)":MM([3,4,5],[64000,104000,144000])},tipoDetalle:{"1 mascota realista (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"},posesTipo:{"1 mascota realista":POSES4},medidasPose:MP("1 mascota realista",[3,4,5,6],[[32000,52000,72000,92000],[48000,78000,108000,138000],[96000,156000,216000,276000],[64000,104000,144000,184000]])}),
       CP("p17","2 personas cartoon",MM([6,8],[90000,120000]),{estilos:["Lindo","Genial","Arcilla","Lego","Funco","Monstruo","Melancólico"]}),
       CP("p18","1 persona + 1 mascota cartoon",MM([6,8],[80000,110000]),{estilos:E7})
     ]},
@@ -2156,7 +2165,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true, p5tipos3:true, mascSinPiernas:true, colgSinPiernas46:true, posesReal1:true, posesPrecios1:true, posesP5cm3:true, p5sinPiernas2:true, llaveroMax1:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true, p5tipos3:true, mascSinPiernas:true, colgSinPiernas46:true, posesReal1:true, posesPrecios1:true, posesP5cm3:true, p5sinPiernas2:true, llaveroMax1:true, posesPrecios2:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
