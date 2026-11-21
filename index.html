@@ -565,7 +565,7 @@ function registerSW(){
 // se muestra lo nuevo una vez con el botón "Entendido".
 // AL PUBLICAR UN CAMBIO: agregar en novedades.json una entrada con n = NOV_VERSION+1 y subir NOV_VERSION.
 const PAGINA_FECHA = Date.parse(document.lastModified)||0;
-const NOV_VERSION = 4;                       // última novedad que ya trae esta página
+const NOV_VERSION = 5;                       // última novedad que ya trae esta página
 const LS_NOV = "sw-novedades-visto";
 let APP_DENTRO = false;
 async function leerNovedades(){
@@ -1891,6 +1891,7 @@ function poseMeds(p,t,pose){ const src = pose && p.medidasPose && Array.isArray(
 function posePrecio(p,t,pose,cm){ const m=poseMeds(p,t,pose).find(x=>x.cm===cm); return m && okP(m.precio) ? m.precio : null; }
 function tablasPrecio(p,t){ const ps=tipoPoses(p,t); return ps.length ? ps.map(x=>poseMeds(p,t,x)) : [prodMeds(p,t)]; }
 // Medidas a elegir: las del tipo, o todas las que tengan sus poses
+function cmsActual(p){ return ct.pose && tipoPoses(p,ct.tipo).includes(ct.pose) ? poseMeds(p,ct.tipo,ct.pose).filter(m=>okP(m.precio)) : cmsTipo(p,ct.tipo); }
 function cmsTipo(p,t){ const vistos={}, out=[]; tablasPrecio(p,t).forEach(tb=>tb.forEach(m=>{ if(!vistos[m.cm]){ vistos[m.cm]=1; out.push(m); } })); return out.sort((a,b)=>a.cm-b.cm); }
 function prodDesde(p,t){
   const tablas = t!==undefined ? tablasPrecio(p,t) : [prodMeds(p)].concat(...(p.tipos||[]).map(k=>tablasPrecio(p,k)));
@@ -1954,14 +1955,14 @@ function cartoonScreenHTML(node){
   if(s==="cm"){
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">Centímetros</div>
-      <p class="subcm">${esc(nombreConTipo(p,ct.tipo))}${ct.estilo?" · estilo "+esc(ct.estilo):""}${tipoDet(p,ct.tipo)?"<br>"+esc(tipoDet(p,ct.tipo)):""}</p>
-      <div class="ovals">${cmsTipo(p, ct.tipo).map(m=>`<button class="oval" data-a="ccm" data-v="${m.cm}">${esc(cmTxt(m.cm))}</button>`).join("")}</div></div>`;
+      <p class="subcm">${esc(nombreConTipo(p,ct.tipo))}${ct.pose&&tipoPoses(p,ct.tipo).length?" · "+esc(ct.pose):""}${ct.estilo?" · estilo "+esc(ct.estilo):""}${tipoDet(p,ct.tipo)?"<br>"+esc(tipoDet(p,ct.tipo)):""}</p>
+      <div class="ovals">${cmsActual(p).map(m=>`<button class="oval" data-a="ccm" data-v="${m.cm}">${esc(cmTxt(m.cm))}</button>`).join("")}</div></div>`;
   }
-  if(s==="pose"){   // igual que en cabina: con la medida elegida, cada pose con su precio
+  if(s==="pose"){   // primero la pose (con su precio "desde"), después los centímetros
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">¿Qué pose?</div>
-      <p class="subcm">${esc(nombreConTipo(p,ct.tipo))} · ${esc(cmTxt(ct.cm))} cm</p>
-      <div class="choices">${tipoPoses(p,ct.tipo).map(x=>{ const pr=posePrecio(p,ct.tipo,x,ct.cm); return bigBtn(x, pr!=null?money(pr):"Consultar", `data-a="cpose" data-v="${esc(x)}"`, "ct_pose_"+p.id+"_"+x); }).join("")}</div></div>`;
+      <p class="subcm">${esc(nombreConTipo(p,ct.tipo))}</p>
+      <div class="choices">${tipoPoses(p,ct.tipo).map(x=>{ const ps=poseMeds(p,ct.tipo,x).map(m=>m.precio).filter(okP); return bigBtn(x, ps.length?"desde "+money(Math.min(...ps)):"Consultar", `data-a="cpose" data-v="${esc(x)}"`, "ct_pose_"+p.id+"_"+x); }).join("")}</div></div>`;
   }
   if(s==="res"){
     const p=ctProd(), k=ctCat(); if(!p) return "";
@@ -2032,7 +2033,8 @@ function bindCartoon(node){
     const b=e.target.closest("[data-a]"); if(!b || !root.contains(b)) return;
     const a=b.dataset.a, v=b.dataset.v, d=Number(b.dataset.d);
     if(a==="desc"){ descPct=Number(v)||0; renderApp(); return; }
-    const despuesCm = ()=>{ const pp=ctProd(); ctGo(pp && tipoPoses(pp, ct.tipo).length ? "pose" : "res"); };
+    // tipo con poses: primero la pose y después la medida; al elegir la medida sale el precio
+    const aMedida = ()=>{ const pp=ctProd(), ms=cmsActual(pp); if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); };
     const startProd = id=>{ descPct=0; ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pose=null; ct.pos="pie"; ct.acc={}; ct.ext={};
       const p=ctProd(), ms=prodMeds(p);
       if(p.tipos && p.tipos.length) ctGo("tipo");
@@ -2040,20 +2042,20 @@ function bindCartoon(node){
       else if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); };
     if(a==="cat"){ ct.cat=v; const k=ctCat(); if(catDirecta(k)) startProd(k.productos[0].id); else ctGo("prods"); }
     else if(a==="prod"){ startProd(v); }
-    else if(a==="ctipo"){ ct.tipo=v; ct.estilo=null; ct.pose=null; const p=ctProd(), ms=cmsTipo(p, v);
+    else if(a==="ctipo"){ ct.tipo=v; ct.estilo=null; ct.pose=null; const p=ctProd();
       if(tipoEstilos(p,v).length) ctGo("estilo");
-      else if(ms.length===1){ ct.cm=ms[0].cm; despuesCm(); } else ctGo("cm"); }
-    else if(a==="cest"){ ct.estilo=v; const ms=cmsTipo(ctProd(), ct.tipo);
-      if(ms.length===1){ ct.cm=ms[0].cm; despuesCm(); } else ctGo("cm"); }
-    else if(a==="ccm"){ ct.cm=Number(v); ct.pos="pie"; ct.acc={}; despuesCm(); }
-    else if(a==="cpose"){ ct.pose=v; ctGo("res"); }
-    else if(a==="posechip"){ ct.pose=v; renderApp(); }
+      else if(tipoPoses(p,v).length) ctGo("pose");
+      else aMedida(); }
+    else if(a==="cest"){ ct.estilo=v; if(tipoPoses(ctProd(), ct.tipo).length && !ct.pose) ctGo("pose"); else aMedida(); }
+    else if(a==="cpose"){ ct.pose=v; aMedida(); }
+    else if(a==="ccm"){ ct.cm=Number(v); ct.pos="pie"; ct.acc={}; ctGo("res"); }
+    else if(a==="posechip"){ ct.pose=v; const pp=ctProd(); if(pp && !cmsActual(pp).some(m=>m.cm===ct.cm)){ ct.acc={}; ctGo("cm"); } else renderApp(); }
     else if(a==="estilo"){ ct.estilo = ct.estilo===v ? null : v; renderApp(); }
     else if(a==="tipo"){ ct.tipo = ct.tipo===v ? null : v; const pp=ctProd(); if(pp && ct.estilo && !tipoEstilos(pp,ct.tipo).includes(ct.estilo)) ct.estilo=null;
       if(pp && ct.pose && !tipoPoses(pp,ct.tipo).includes(ct.pose)) ct.pose=null;
       // si el tipo nuevo tiene otra tabla de precios y no tiene esta medida, se vuelve a elegir la medida; si pide pose, se elige la pose
-      if(pp && !cmsTipo(pp, ct.tipo).some(m=>m.cm===ct.cm)){ ct.acc={}; ctGo("cm"); }
-      else if(pp && tipoPoses(pp, ct.tipo).length && !ct.pose) ctGo("pose");
+      if(pp && tipoPoses(pp, ct.tipo).length && !ct.pose) ctGo("pose");
+      else if(pp && !cmsActual(pp).some(m=>m.cm===ct.cm)){ ct.acc={}; ctGo("cm"); }
       else renderApp(); }
     else if(a==="cpos"){ ct.pos=v; renderApp(); }
     else if(a==="cacc"){ ctGo("acc"); }
