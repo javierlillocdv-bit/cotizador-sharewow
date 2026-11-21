@@ -30,7 +30,7 @@
     "fecha": "21 de noviembre de 2026",
     "cambios": [
       "1 mascota realista: precios nuevos por pose. Sentado cuesta el doble que Parado, Acostado el triple y Echado el cuádruple.",
-      "Figura cartoon · 1 mascota realista: 4 cm desde $52.000, 5 cm desde $72.000, 6 cm desde $92.000 y 8 cm desde $152.000 (precio de Parado). Ya no tiene 3 cm.",
+      "Figura cartoon · 1 mascota realista: 4 cm desde $52.000, 5 cm desde $72.000, 6 cm desde $92.000 y 8 cm desde $152.000 (precio de Parado).",
       "Colgante o llavero · 1 mascota realista: 4 cm desde $52.000 y 6 cm desde $92.000 (precio de Parado)."
     ]
   },
@@ -46,6 +46,13 @@
     "fecha": "21 de noviembre de 2026",
     "cambios": [
       "1 mascota realista: los cuadros de las 4 poses ya tienen sus fotos (las mismas de cabina)."
+    ]
+  },
+  {
+    "n": 7,
+    "fecha": "21 de noviembre de 2026",
+    "cambios": [
+      "Figura cartoon · 1 mascota realista: se agregó 3 cm (Parado $32.000, Sentado $64.000, Acostado $96.000, Echado $128.000)."
     ]
   }
 ]
