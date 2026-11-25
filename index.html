@@ -565,7 +565,7 @@ function registerSW(){
 // se muestra lo nuevo una vez con el botón "Entendido".
 // AL PUBLICAR UN CAMBIO: agregar en novedades.json una entrada con n = NOV_VERSION+1 y subir NOV_VERSION.
 const PAGINA_FECHA = Date.parse(document.lastModified)||0;
-const NOV_VERSION = 13;                       // última novedad que ya trae esta página
+const NOV_VERSION = 14;                       // última novedad que ya trae esta página
 const LS_NOV = "sw-novedades-visto";
 let APP_DENTRO = false;
 async function leerNovedades(){
@@ -826,6 +826,22 @@ async function loadAll(){
     C.cats.forEach(k=>(k.productos||[]).forEach(p=>{
       if(p.id==="p3"){ const m=(p.medidas||[]).find(x=>x.cm===8); if(m) m.precio=88000; }
       if(TAB[p.id]) p.medidas=TAB[p.id]; })); C.preciosEscena1=true; }
+  // Planilla 25-nov-2026: personas en cabina (solas = unidas a la misma medida; accesorio chico 10% también en unidas)
+  if(P && !P.planilla1125){ const T2=(sz,f)=>sz.map((cm,i)=>({cm,precio:f[i]}));
+    P.solas=Object.assign({}, P.solas||{}, {alto:T2([6,7,8,9,12,15,18,30],[30000,48000,62000,85000,165000,229000,320000,799000]), bajo:T2([6,7,8,9,12,15,18],[42000,61000,83000,112000,217000,360000,508000]), bebe:T2([4,6,7,8],[37000,100000,152000,221000])});
+    P.unidas=Object.assign({}, P.unidas||{}, {alto:T2([6,7,8,9,10,11,12,13,14,15,16,17,18,30],[30000,48000,62000,85000,121000,147000,165000,187000,205000,229000,264000,293000,320000,799000]), bajo:T2([6,7,8,9,10,11,12,13,14,15,16,17,18],[42000,61000,83000,112000,141000,177000,217000,262000,320000,360000,408000,459000,508000])});
+    P.pct=Object.assign({}, P.pct||{}, {grande:50, chicoSolas:10, chicoUnidas:10});
+    P.mult=Object.assign({}, P.mult||{}, {arrod:1.5, suelo:3});
+    P.mascotas=[[3,32000,48000,64000,96000],[4,52000,78000,104000,156000],[5,72000,108000,144000,216000],[6,92000,138000,184000,276000],[8,146000,219000,292000,438000],[9,188000,282000,376000,564000]]
+      .map(([cm,parado,sentado,acostado,echado])=>({cm,parado,sentado,acostado,echado}));
+    P.mascotaSP=T2([3,4,5,6,8,9],[64000,104000,144000,184000,292000,376000]);
+    P.planilla1125=true; }
+  // Figura cartoon · 1 mascota realista: 9 cm (25-nov-2026)
+  if(C && C.cats && !C.p5cm9){ const R="1 mascota realista", F={Parado:188000, Sentado:282000, Acostado:376000, Echado:564000};
+    const pon=(tb,precio)=>{ const m=tb.find(x=>x.cm===9); if(m) m.precio=precio; else { tb.push({cm:9,precio}); tb.sort((a,b)=>a.cm-b.cm); } };
+    C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p5") return; pon(p.medidas=p.medidas||[], F.Parado);
+      Object.keys(F).forEach(x=>{ const tb=p.medidasPose && p.medidasPose[R+"|"+x]; if(Array.isArray(tb)) pon(tb, F[x]); });
+      const cuy=p.medidasTipo && p.medidasTipo[R+" (sin piernas a la vista)"]; if(Array.isArray(cuy)) pon(cuy, 376000); })); C.p5cm9=true; }
   let changed=false;
   walk(menu.tiles, t=>{ if(t.id==="cab2" && !t.tipo){ t.tipo="grupo"; t.encabezado="Centímetros"; t.tallas=[9,12,15,18]; t.maxPersonas=10; t.fuente="cab1"; changed=true; } });
   walk(menu.tiles, t=>{ if(t.id==="cab1" && !t.tipo){ t.tipo="medidas"; t.encabezado="Centímetros"; t.medidas=defaultMedidas(); changed=true; } });
@@ -1353,21 +1369,26 @@ const S_SOLA=[6,7,8,9,12,15,18,30], S_UNI=[6,7,8,9,10,11,12,13,14,15,16,17,18,30
 const DEFAULT_P = {
   umbral:1.40,
   solas:{
-    alto:TT(S_SOLA,[31000,36000,47000,65000,125000,220000,300000,962000]),
-    bajo:TT(S_SOLA.slice(0,7),[41000,45000,62000,92000,197000,371000,528000]),
-    bebe:TT([4,6,7,8],[36000,101000,155000,227000])
+    alto:TT(S_SOLA,[30000,48000,62000,85000,165000,229000,320000,799000]),
+    bajo:TT(S_SOLA.slice(0,7),[42000,61000,83000,112000,217000,360000,508000]),
+    bebe:TT([4,6,7,8],[37000,100000,152000,221000])
   },
   unidas:{
-    alto:TT(S_UNI,[31000,36000,47000,65000,91000,111000,125000,160000,196000,220000,247000,274000,300000,962000]),
-    bajo:TT(S_UNI.slice(0,13),[41000,45000,62000,92000,143000,174000,197000,270000,329000,371000,424000,477000,528000])
+    alto:TT(S_UNI,[30000,48000,62000,85000,121000,147000,165000,187000,205000,229000,264000,293000,320000,799000]),
+    bajo:TT(S_UNI.slice(0,13),[42000,61000,83000,112000,141000,177000,217000,262000,320000,360000,408000,459000,508000])
   },
   mult:{arrod:1.5, suelo:3},
-  pct:{grande:50, chicoSolas:10, chicoUnidas:13},
+  pct:{grande:50, chicoSolas:10, chicoUnidas:10},
+  // Respaldo: los precios de mascota de cabina se leen de Figura cartoon · 1 mascota realista (mismo valor)
   mascotas:[
-    {cm:4, parado:51000, sentado:102000, acostado:153000, echado:204000},
-    {cm:6, parado:99000, sentado:198000, acostado:297000, echado:396000},
-    {cm:9, parado:168000, sentado:336000, acostado:504000, echado:672000}
+    {cm:3, parado:32000, sentado:48000, acostado:64000, echado:96000},
+    {cm:4, parado:52000, sentado:78000, acostado:104000, echado:156000},
+    {cm:5, parado:72000, sentado:108000, acostado:144000, echado:216000},
+    {cm:6, parado:92000, sentado:138000, acostado:184000, echado:276000},
+    {cm:8, parado:146000, sentado:219000, acostado:292000, echado:438000},
+    {cm:9, parado:188000, sentado:282000, acostado:376000, echado:564000}
   ],
+  mascotaSP:[{cm:3,precio:64000},{cm:4,precio:104000},{cm:5,precio:144000},{cm:6,precio:184000},{cm:8,precio:292000},{cm:9,precio:376000}],
   mascotaSola:{chica:4, mediana:6, grande:9, gato:4},
   mascotaGrupo:[
     {talla:9, chica:4, mediana:4, grande:6, gato:4},
@@ -1445,13 +1466,35 @@ function accItems(acc,base,unida){ const out=[]; for(const it of P.accesorios){ 
 function accTot(acc,base,unida){ return accItems(acc,base,unida).reduce((s,x)=>s+x.sub,0); }
 function extItems(q){
   const out=[]; for(const e of P.extras){ const n=(q.ext||{})[e.id]||0; if(n>0) out.push({nombre:e.nombre,q:n,sub:n*(Number(e.precio)||0)}); }
-  if(q.modP) out.push({nombre:"Modelado desde foto (persona)",q:q.modP,sub:q.modP*P.modelado.persona});
+  if(q.modP && fotoOK(q)) out.push({nombre:"Modelado desde foto (persona)",q:q.modP,sub:q.modP*P.modelado.persona});
   if(q.modM) out.push({nombre:"Modelado desde foto (mascota)",q:q.modM,sub:q.modM*P.modelado.mascota});
   return out;
 }
 function extTot(q){ return extItems(q).reduce((s,x)=>s+x.sub,0); }
+// Figura real con fotografía (modelado desde foto de la persona): solo figura sola de 9, 12, 15, 18 y 30 cm
+const FOTO_CM=[9,12,15,18,30];
+const fotoOK = q => !!q && q.modo==="sola" && q.tabla!=="bebe" && FOTO_CM.includes(q.cm);
 function toM(v){ const x=cmIn(v); if(!(x>0)) return NaN; return x>3 ? x/100 : x; }
-function petPrice(cm,pos){ const r=(P.mascotas||[]).find(m=>m.cm===cm); return r&&r[pos]!=null&&!isNaN(r[pos])?r[pos]:null; }
+// Mascotas en cabina: mismos precios que Figura cartoon · 1 mascota realista (se leen de ahí, para que nunca queden distintos).
+// Ya no se elige chica/mediana/grande: tipo (normal o sin piernas a la vista), pose y centímetros.
+const PET_T="1 mascota realista", PET_SP_T=PET_T+" (sin piernas a la vista)";
+const PET_NOM="Mascota", PET_SP_NOM="Mascota (sin piernas a la vista)";
+const PET_DET="Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo";
+function petRef(){ let r=null; ((C&&C.cats)||[]).forEach(k=>(k.productos||[]).forEach(x=>{ if(x.id==="p5") r=x; })); return r; }
+function petTabla(sp,pos){
+  const ok=m=>m && m.cm>0 && m.precio!=null && !isNaN(m.precio) && m.precio>0, ord=L=>L.filter(ok).slice().sort((a,b)=>a.cm-b.cm);
+  const r=petRef(), tb = r ? (sp ? (r.medidasTipo||{})[PET_SP_T] : (r.medidasPose||{})[PET_T+"|"+PPOS_TXT[pos]]) : null;
+  if(Array.isArray(tb) && tb.length) return ord(tb);
+  if(sp) return ord(P.mascotaSP||[]);
+  return ord((P.mascotas||[]).map(x=>({cm:x.cm, precio:x[pos]})));
+}
+function petPrice(cm,pos,sp){ if(!(cm>0) || (!sp && !PPOS.includes(pos))) return null; const m=petTabla(!!sp,pos).find(x=>x.cm===cm); return m?m.precio:null; }
+function petCms(sp){ const v={}, out=[]; (sp?[petTabla(true)]:PPOS.map(x=>petTabla(false,x))).forEach(L=>L.forEach(m=>{ if(!v[m.cm]){ v[m.cm]=1; out.push(m.cm); } })); return out.sort((a,b)=>a-b); }
+function petDesde(sp,pos){ const L = sp ? petTabla(true) : pos ? petTabla(false,pos) : [].concat(...PPOS.map(x=>petTabla(false,x))); return L.length ? Math.min(...L.map(m=>m.precio)) : null; }
+const petNom = pt => pt.sp ? PET_SP_NOM : PET_NOM;
+function petDesc(pt){ return `${petNom(pt)}${pt.cm?" · "+cmTxt(pt.cm)+" cm":""}${!pt.sp&&pt.pos?" · "+PPOS_TXT[pt.pos]:""}`; }
+function petCalc(list){ return (list||[]).map((pt,i)=>({i, sp:!!pt.sp, pos:pt.pos, cm:pt.cm||null, precio:pt.cm?petPrice(pt.cm,pt.pos,pt.sp):null})); }
+const petsSinMedida = q => (q && q.pets || []).filter(pt=>!pt.cm).length;
 function petGroupCm(size,raza){
   const rows=(P.mascotaGrupo||[]).slice().sort((a,b)=>a.talla-b.talla);
   if(!rows.length) return P.mascotaSola[raza]||4;
@@ -1464,8 +1507,8 @@ function calcSola(q){
   if(base==null) return {base:null,total:null};
   const fig = q.tabla==="bebe" ? base : Math.round(base*posMult(q.pos));
   const acc = accTot(q.acc,base,false), ext=extTot(q);
-  // Mascotas junto a 1 persona: mismo tamaño y precio que en grupo, según la medida de la figura
-  const pets=(q.pets||[]).map((pt,i)=>{ const cm=petGroupCm(q.cm,pt.raza); return {i,raza:pt.raza,pos:pt.pos,cm,precio:petPrice(cm,pt.pos)}; });
+  // Mascotas junto a 1 persona: se elige tipo, pose y centímetros de cada una
+  const pets=petCalc(q.pets);
   const petsTot=pets.reduce((s,p)=>s+(p.precio||0),0);
   return {base, fig, acc, ext, pets, petsTot, total:fig+acc+petsTot+ext};
 }
@@ -1484,14 +1527,14 @@ function calcGrupo(q){
     const acc = base!=null ? accTot(p.acc,base,true) : 0;
     return {i,h,tabla,fig,cm:t&&t!=="over"?t.cm:null,base,figP,acc,pos:p.pos};
   });
-  const pets=q.pets.map((pt,i)=>{ const cm=petGroupCm(q.size,pt.raza); return {i,raza:pt.raza,pos:pt.pos,cm,precio:petPrice(cm,pt.pos)}; });
+  const pets=petCalc(q.pets);
   const ext=extTot(q);
-  const faltan = per.filter(r=>r.base==null).length + pets.filter(p=>p.precio==null).length;
+  const faltan = per.filter(r=>r.base==null).length + pets.filter(p=>p.cm && p.precio==null).length;
   const total = per.reduce((s,r)=>s+(r.figP||0)+r.acc,0) + pets.reduce((s,p)=>s+(p.precio||0),0) + ext;
   return {per,pets,ext,total,faltan,tablaGrupo};
 }
 function calcMascota(q){
-  const cm=P.mascotaSola[q.raza]||4, precio=petPrice(cm,q.pos), ext=extTot(q);
+  const cm=q.cm, precio=petPrice(cm,q.pos,q.sp), ext=extTot(q);
   return {cm, precio, ext, total:(precio||0)+ext};
 }
 
@@ -1547,6 +1590,15 @@ const chip = (t,on,attr)=>`<button class="chip" aria-pressed="${on?"true":"false
 const mFmt = n => n==null ? "sin precio" : money(n);
 const mts = h => cmTxt(+h.toFixed(2)) + " m";
 
+// Mascota junto a personas: tipo, pose y centímetros con botones
+function petBlock(pt){
+  return `<div class="pblock">
+    <div class="sl"><span><b>🐾</b> ${esc(petNom(pt))}${pt.cm?` · <b>${esc(cmTxt(pt.cm))} cm</b>`:""}${!pt.sp&&pt.pos?" · "+esc(PPOS_TXT[pt.pos]):""}</span><span style="display:flex;gap:6px;align-items:center"><b>${pt.cm?mFmt(pt.precio):"elige los cm"}</b><button class="del-x" data-a="rmpet" data-i="${pt.i}" aria-label="Quitar mascota">×</button></span></div>
+    <div class="chips" style="justify-content:flex-start">${chip(PET_NOM,!pt.sp,`data-a="petsp" data-i="${pt.i}" data-v="0"`)}${chip("Sin piernas a la vista",pt.sp,`data-a="petsp" data-i="${pt.i}" data-v="1"`)}</div>
+    ${pt.sp?"":`<div class="chips" style="justify-content:flex-start">${PPOS.map(k=>chip(PPOS_TXT[k],pt.pos===k,`data-a="petpos" data-i="${pt.i}" data-v="${k}"`)).join("")}</div>`}
+    <div class="chips" style="justify-content:flex-start">${petCms(pt.sp).map(cm=>chip(cmTxt(cm)+" cm",pt.cm===cm,`data-a="petcm" data-i="${pt.i}" data-v="${cm}"`)).join("")}</div></div>`;
+}
+const avisoPets = q => { const n=petsSinMedida(q); return n ? `Falta elegir los centímetros de ${n} mascota${n>1?"s":""}.` : ""; };
 function accLine(items, attr){
   return `<div class="accline">${items.map(x=>`<span>+ ${esc(x.it.nombre)}${x.q>1?" x"+x.q:""} <b>${money(x.sub)}</b></span>`).join("")}
     <button class="accbtn" ${attr}>${items.length?"Cambiar accesorios":"Agregar accesorios"}</button></div>`;
@@ -1557,8 +1609,9 @@ function extBlock(q){
     ${L.map(x=>`<div class="sl sub"><span>${esc(x.nombre)}${x.q>1?" x"+x.q:""}</span><span>${money(x.sub)}</span></div>`).join("")}
     <div style="margin-top:8px"><button class="accbtn" data-a="ext">${L.length?"Cambiar bases y extras":"Agregar base o extra"}</button></div></div>`;
 }
-function totalBlock(total, faltan){
+function totalBlock(total, faltan, aviso){
   return `${precioHTML(total)}
+    ${aviso?`<p class="warn-txt">${esc(aviso)}</p>`:""}
     ${faltan?`<p class="warn-txt">Hay ${faltan} figura${faltan>1?"s":""} sin precio en la tabla. Revisa los precios con Editar.</p>`:""}
     <button class="gen" data-a="pdf" style="margin-top:26px;font-size:clamp(30px,4.4vw,44px);padding:20px 48px">Generar cotización</button>
     <button class="cartadd" data-a="cartadd">${CART_ICON}Agregar al carrito</button>
@@ -1603,13 +1656,10 @@ function cabScreenHTML(node){
         ${accLine(items,'data-a="acc" data-v="s"')}
       </div>
       <div class="sumcard"><div class="sl"><b>Mascotas</b><span>${money(c.petsTot)}</span></div>
-        ${c.pets.map(pt=>`<div class="pblock">
-          <div class="sl"><span><b>🐾</b> ${esc(RAZA_TXT[pt.raza])} · <b>${esc(cmTxt(pt.cm))} cm</b></span><span style="display:flex;gap:6px;align-items:center"><b>${mFmt(pt.precio)}</b><button class="del-x" data-a="rmpet" data-i="${pt.i}" aria-label="Quitar mascota">×</button></span></div>
-          <div class="chips" style="justify-content:flex-start">${["chica","mediana","grande","gato"].map(k=>chip(RAZA_TXT[k],pt.raza===k,`data-a="praza" data-i="${pt.i}" data-v="${k}"`)).join("")}</div>
-          <div class="chips" style="justify-content:flex-start">${PPOS.map(k=>chip(PPOS_TXT[k],pt.pos===k,`data-a="petpos" data-i="${pt.i}" data-v="${k}"`)).join("")}</div></div>`).join("")}
+        ${c.pets.map(petBlock).join("")}
         <button class="add-line" data-a="addpet">+ Agregar mascota</button></div>
       ${extBlock(q)}
-      ${totalBlock(c.total,c.pets.filter(p=>p.precio==null).length)}</div>`;
+      ${totalBlock(c.total,c.pets.filter(p=>p.cm&&p.precio==null).length,avisoPets(q))}</div>`;
   }
 
   if(s==="gsize") return `<div class="med"><div class="pillhead">Centímetros</div>
@@ -1626,8 +1676,9 @@ function cabScreenHTML(node){
       <div class="hlist">${Array.from({length:q.n},(_,i)=>`<label class="hrow"><span class="hn">${i+1}:</span>
         <input class="hin" inputmode="decimal" data-h="${i}" value="${esc(q.hs[i]||"")}" placeholder="1,70" aria-label="Estatura persona ${i+1}"></label>`).join("")}</div>
       <div class="sumcard" style="margin-top:22px"><div class="sl"><b>Mascotas</b><span>${q.pets.length}</span></div>
-        ${q.pets.map((pt,i)=>`<div class="petrow"><div class="chips" style="justify-content:flex-start">${Object.keys(RAZA_TXT).map(k=>chip(RAZA_TXT[k],pt.raza===k,`data-a="praza" data-i="${i}" data-v="${k}"`)).join("")}</div>
+        ${q.pets.map((pt,i)=>`<div class="petrow"><div class="chips" style="justify-content:flex-start">${chip(PET_NOM,!pt.sp,`data-a="petsp" data-i="${i}" data-v="0"`)}${chip("Sin piernas a la vista",!!pt.sp,`data-a="petsp" data-i="${i}" data-v="1"`)}</div>
           <button class="del-x" data-a="rmpet" data-i="${i}" aria-label="Quitar mascota">×</button></div>`).join("")}
+        ${q.pets.length?`<p class="small" style="margin:6px 0 0">La pose y los centímetros de cada mascota se eligen en el resultado.</p>`:""}
         <button class="add-line" data-a="addpet">+ Agregar mascota</button></div>
       <p class="warn-txt" id="gErr"></p>
       <button class="gen" data-a="gen">Generar</button></div>`;
@@ -1642,29 +1693,35 @@ function cabScreenHTML(node){
           <div class="sl"><span><b>${r.i+1}.</b> ${mts(r.h)} · ${esc(cmTxt(+r.fig.toFixed(2)))} → <b>${r.cm!=null?cmTxt(r.cm)+" cm":"—"}</b></span><b>${mFmt(r.figP)}</b></div>
           <div class="chips" style="justify-content:flex-start">${Object.keys(POS_TXT).map(k=>chip(POS_TXT[k],r.pos===k,`data-a="ppos" data-i="${r.i}" data-v="${k}"`)).join("")}</div>
           ${r.base!=null?accLine(items,`data-a="acc" data-v="${r.i}"`):""}</div>`;}).join("")}
-        ${c.pets.map(p=>`<div class="pblock">
-          <div class="sl"><span><b>🐾</b> ${esc(RAZA_TXT[p.raza])} · <b>${esc(cmTxt(p.cm))} cm</b></span><b>${mFmt(p.precio)}</b></div>
-          <div class="chips" style="justify-content:flex-start">${PPOS.map(k=>chip(PPOS_TXT[k],p.pos===k,`data-a="petpos" data-i="${p.i}" data-v="${k}"`)).join("")}</div></div>`).join("")}
+        ${c.pets.map(petBlock).join("")}
       </div>
       ${extBlock(q)}
-      ${totalBlock(c.total,c.faltan)}
+      ${totalBlock(c.total,c.faltan,avisoPets(q))}
       <div style="margin-top:10px"><button class="btn" data-a="back">Cambiar estaturas</button></div></div>`;
   }
 
-  if(s==="mraza") return `<div class="med"><div class="pillhead">¿Qué mascota?</div><div class="choices">
-      ${["chica","mediana","grande","gato"].map(k=>bigBtn(RAZA_TXT[k],`Proporción ${cmTxt(P.mascotaSola[k]||4)} cm`,`data-a="raza" data-v="${k}"`,"cab_raza_"+k)).join("")}</div></div>`;
+  // Mascota sola, igual que en cartoon: tipo → pose → centímetros → precio
+  if(s==="mtipo") return `<div class="med"><div class="pillhead">¿Qué mascota?</div><div class="choices">
+      ${bigBtn(PET_NOM,`4 poses · desde ${mFmt(petDesde(false))}`,'data-a="mtipo" data-v="0"',"cab_mascota")}
+      ${bigBtn(PET_SP_NOM,`desde ${mFmt(petDesde(true))}`,'data-a="mtipo" data-v="1"',"ct_tipo_p5_"+PET_SP_T)}</div>
+      <p class="small" style="margin-top:14px;font-size:16px"><b>${esc(PET_SP_NOM)}:</b> ${esc(PET_DET)}</p></div>`;
 
-  if(s==="mpos"){
-    const cm=P.mascotaSola[q.raza]||4;
-    return `<div class="med"><div class="pillhead">${esc(RAZA_TXT[q.raza])} · ${esc(cmTxt(cm))} cm</div><div class="choices">
-      ${PPOS.map(k=>bigBtn(PPOS_TXT[k],mFmt(petPrice(cm,k)),`data-a="mpos" data-v="${k}"`,"cab_mpos_"+q.raza+"_"+k)).join("")}</div></div>`;
-  }
+  if(s==="mpose") return `<div class="med"><div class="pillhead">¿Qué pose?</div>
+      <p class="subcm">${esc(PET_NOM)}</p><div class="choices">
+      ${PPOS.map(k=>bigBtn(PPOS_TXT[k],`desde ${mFmt(petDesde(false,k))}`,`data-a="mpos" data-v="${k}"`,"cab_mpos_grande_"+k)).join("")}</div></div>`;
+
+  if(s==="mcm") return `<div class="med"><div class="pillhead">Centímetros</div>
+      <p class="subcm">${q.sp?esc(PET_SP_NOM)+"<br>"+esc(PET_DET):esc(PET_NOM+" · "+PPOS_TXT[q.pos])}</p>
+      <div class="ovals">${petCms(q.sp).map(cm=>`<button class="oval" data-a="mcm" data-v="${cm}">${esc(cmTxt(cm))}</button>`).join("")}</div></div>`;
 
   if(s==="mres"){
     const c=calcMascota(q);
-    return `<div class="med"><div class="pillhead">${esc(RAZA_TXT[q.raza])} · ${esc(cmTxt(c.cm))} cm</div>
-      <div class="sumcard"><div class="sl"><b>${esc(PPOS_TXT[q.pos])}</b><b>${mFmt(c.precio)}</b></div>
-        <div class="chips" style="justify-content:flex-start">${PPOS.map(k=>chip(PPOS_TXT[k],q.pos===k,`data-a="mposc" data-v="${k}"`)).join("")}</div></div>
+    return `<div class="med"><div class="rcm" style="font-family:'Barlow Condensed',Barlow,sans-serif;font-weight:700;font-size:clamp(72px,13vw,140px);line-height:1">${esc(cmTxt(c.cm))} CM</div>
+      <p class="subcm res">${esc(q.sp?PET_SP_NOM:PET_NOM+" · "+PPOS_TXT[q.pos])}</p>
+      <div class="sumcard"><div class="sl"><b>${q.sp?esc(PET_SP_NOM):"Pose · "+esc(PPOS_TXT[q.pos])}</b><b>${mFmt(c.precio)}</b></div>
+        ${q.sp?"":`<div class="chips" style="justify-content:flex-start">${PPOS.map(k=>chip(PPOS_TXT[k],q.pos===k,`data-a="mposc" data-v="${k}"`)).join("")}</div>`}
+        <div class="sl" style="margin-top:12px"><b>Centímetros</b></div>
+        <div class="chips" style="justify-content:flex-start">${petCms(q.sp).map(cm=>chip(cmTxt(cm)+" cm",q.cm===cm,`data-a="mcmc" data-v="${cm}"`)).join("")}</div></div>
       ${extBlock(q)}
       ${totalBlock(c.total, c.precio==null?1:0)}</div>`;
   }
@@ -1689,8 +1746,10 @@ function cabScreenHTML(node){
       <div class="qty"><button ${attr} data-d="-1" aria-label="Quitar" ${n?"":"disabled"}>−</button><span>${n}</span><button ${attr} data-d="1" aria-label="Agregar">+</button></div></div>`;
     return `<div class="med"><div class="pillhead">Bases y extras</div>
       <div class="acclist">${P.extras.map(e=>row(e.nombre,e.precio,q.ext[e.id]||0,`data-a="eq" data-v="${e.id}"`)).join("")}
-        ${q.modo!=="mascota"?row("Modelado desde foto (persona)",P.modelado.persona,q.modP||0,'data-a="mod" data-v="modP"'):""}
+        ${fotoOK(q)?row("Modelado desde foto (persona)",P.modelado.persona,q.modP||0,'data-a="mod" data-v="modP"'):""}
         ${q.modo!=="sola"||(q.pets&&q.pets.length)?row("Modelado desde foto (mascota)",P.modelado.mascota,q.modM||0,'data-a="mod" data-v="modM"'):""}</div>
+      ${q.modo==="sola"&&!fotoOK(q)?`<p class="small" style="margin:10px 0 0">Figura real con fotografía (modelado desde foto de la persona): solo figura sola de 9, 12, 15, 18 o 30 cm.</p>`:""}
+      ${q.modo==="grupo"?`<p class="small" style="margin:10px 0 0">Figura real con fotografía (modelado desde foto de la persona): solo para figuras solas.</p>`:""}
       <div class="accsum">Extras: ${money(extTot(q))}</div>
       <button class="gen" data-a="back">Listo</button></div>`;
   }
@@ -1702,16 +1761,16 @@ function cabText(){
   if(q.modo==="sola"){ const c=calcSola(q);
     L.push(`Figura ${cmTxt(q.cm)} cm · ${TABLA_TXT[q.tabla]}${q.tabla!=="bebe"&&q.pos!=="pie"?" · "+POS_TXT[q.pos]:""}: ${money(c.fig)}`);
     accItems(q.acc,c.base,false).forEach(x=>L.push(`+ ${x.it.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`));
-    (c.pets||[]).forEach(p=>L.push(`${RAZA_TXT[p.raza]} ${cmTxt(p.cm)} cm · ${PPOS_TXT[p.pos]}: ${mFmt(p.precio)}`));
+    (c.pets||[]).forEach(p=>L.push(`${petDesc(p)}: ${mFmt(p.precio)}`));
     extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   } else if(q.modo==="grupo"){ const c=calcGrupo(q);
     L.push(`Figura grupal ${cmTxt(q.size)} cm${c.tablaGrupo==="bajo"?" (todos hasta 1,40 m)":""}`);
     c.per.forEach(r=>{ L.push(`Persona ${r.i+1} (${mts(r.h)}) ${cmTxt(r.cm)} cm${r.pos!=="pie"?" · "+POS_TXT[r.pos]:""}: ${mFmt(r.figP)}`);
       if(r.base!=null) accItems(q.per[r.i].acc,r.base,true).forEach(x=>L.push(`   + ${x.it.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); });
-    c.pets.forEach(p=>L.push(`${RAZA_TXT[p.raza]} ${cmTxt(p.cm)} cm · ${PPOS_TXT[p.pos]}: ${mFmt(p.precio)}`));
+    c.pets.forEach(p=>L.push(`${petDesc(p)}: ${mFmt(p.precio)}`));
     extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   } else { const c=calcMascota(q);
-    L.push(`${RAZA_TXT[q.raza]} ${cmTxt(c.cm)} cm · ${PPOS_TXT[q.pos]}: ${mFmt(c.precio)}`);
+    L.push(`${petDesc({sp:q.sp,pos:q.pos,cm:c.cm})}: ${mFmt(c.precio)}`);
     extItems(q).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`)); L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
   }
   return L.join("\n");
@@ -1731,15 +1790,16 @@ function bindCab(node){
     if(a==="start"){ descPct=0;
       if(v==="sola"){ cab.q={modo:"sola",tabla:null,cm:null,pos:"pie",acc:{},ext:{},modP:0,modM:0,pets:[]}; cabGo("estatura"); }
       if(v==="grupo"){ cab.q={modo:"grupo",size:null,n:null,hs:[],per:[],pets:[],ext:{},modP:0,modM:0}; cabGo("gsize"); }
-      if(v==="mascota"){ cab.q={modo:"mascota",raza:null,pos:"parado",ext:{},modM:0}; cabGo("mraza"); }
+      if(v==="mascota"){ cab.q={modo:"mascota",sp:false,pos:null,cm:null,ext:{},modM:0}; cabGo("mtipo"); }
     }
     else if(a==="tabla"){ q.tabla=v; cabGo("cm"); }
     else if(a==="cm"){ q.cm=Number(v); q.pos="pie"; q.acc={}; cabGo("res1"); }
     else if(a==="pos"){ q.pos=v; renderApp(); }
     else if(a==="gsize"){ q.size=Number(v); cabGo("gn"); }
     else if(a==="gn"){ const n=Number(v); q.n=n; q.hs=q.hs.slice(0,n); q.per=Array.from({length:n},(_,k)=>q.per[k]||{pos:"pie",acc:{}}); cabGo("gh"); const f=root.querySelector(".hin"); if(f) f.focus(); }
-    else if(a==="addpet"){ q.pets.push({raza:"chica",pos:"parado"}); renderApp(); }
-    else if(a==="praza"){ q.pets[i].raza=v; renderApp(); }
+    else if(a==="addpet"){ q.pets.push({sp:false,pos:"parado",cm:null}); renderApp(); }
+    else if(a==="petsp"){ const pt=q.pets[i]; pt.sp = v==="1"; if(pt.cm && !petCms(pt.sp).includes(pt.cm)) pt.cm=null; if(!pt.sp && !pt.pos) pt.pos="parado"; renderApp(); }
+    else if(a==="petcm"){ q.pets[i].cm=Number(v); renderApp(); }
     else if(a==="rmpet"){ q.pets.splice(i,1); renderApp(); }
     else if(a==="gen"){
       const bad=[]; for(let k=0;k<q.n;k++){ if(!(toM(q.hs[k])>0)) bad.push(k+1); }
@@ -1748,9 +1808,11 @@ function bindCab(node){
     }
     else if(a==="ppos"){ q.per[i].pos=v; renderApp(); }
     else if(a==="petpos"){ q.pets[i].pos=v; renderApp(); }
-    else if(a==="raza"){ q.raza=v; cabGo("mpos"); }
-    else if(a==="mpos"){ q.pos=v; cabGo("mres"); }
+    else if(a==="mtipo"){ q.sp = v==="1"; q.pos=null; q.cm=null; cabGo(q.sp ? "mcm" : "mpose"); }
+    else if(a==="mpos"){ q.pos=v; cabGo("mcm"); }
+    else if(a==="mcm"){ q.cm=Number(v); cabGo("mres"); }
     else if(a==="mposc"){ q.pos=v; renderApp(); }
+    else if(a==="mcmc"){ q.cm=Number(v); renderApp(); }
     else if(a==="acc"){ cab.accFor = v==="s" ? "s" : Number(v); cabGo("acc"); }
     else if(a==="aq"){ const acc = cab.accFor==="s" ? q.acc : q.per[cab.accFor].acc; acc[v]=Math.max(0,(acc[v]||0)+d); if(!acc[v]) delete acc[v]; renderApp(); }
     else if(a==="ext"){ cabGo("ext"); }
@@ -1758,6 +1820,7 @@ function bindCab(node){
     else if(a==="mod"){ q[v]=Math.max(0,(q[v]||0)+d); renderApp(); }
     else if(a==="back"){ if(cabBack()) { renderApp(); window.scrollTo(0,0); } }
     else if(a==="new"){ cabReset(); renderApp(); window.scrollTo(0,0); }
+    else if((a==="copy"||a==="pdf"||a==="cartadd") && petsSinMedida(q)){ toast(avisoPets(q)); }
     else if(a==="copy"){ copyTxt(cabText()); }
     else if(a==="pdf"){ openQuoteForm(cabLines); }
     else if(a==="cartadd"){ agregarAlCarrito(cabLines()); }
@@ -1880,7 +1943,7 @@ const DEFAULT_C = {
     {id:"k1",nombre:"Figura cartoon",productos:[
       CP("p3","1 persona cartoon",MM([4,6,8,10,12,15,18],[25000,55000,88000,135000,205000,398000,783000]),{estilos:[...E10,"Pixar","Semi realista"],detalle:"Sin accesorios",mods:true}),
       CP("p4","1 mascota cartoon",MM([3,4,5,6],[32000,52000,72000,92000]),{tipos:["1 mascota cartoon","1 mascota cartoon (sin piernas a la vista)"],medidasTipo:{"1 mascota cartoon (sin piernas a la vista)":MM([3,4,5,6],[62000,104000,144000,184000])},tipoDetalle:{"1 mascota cartoon (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"}}),
-      CP("p5","1 mascota realista",MM([3,4,5,6,8],[32000,52000,72000,92000,146000]),{tipos:["1 mascota realista","1 mascota realista (sin piernas a la vista)"],medidasTipo:{"1 mascota realista (sin piernas a la vista)":MM([3,4,5,6,8],[64000,104000,144000,184000,292000])},tipoDetalle:{"1 mascota realista (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"},posesTipo:{"1 mascota realista":POSES4},medidasPose:MP("1 mascota realista",[3,4,5,6,8],[[32000,52000,72000,92000,146000],[48000,78000,108000,138000,219000],[64000,104000,144000,184000,292000],[96000,156000,216000,276000,438000]])}),
+      CP("p5","1 mascota realista",MM([3,4,5,6,8,9],[32000,52000,72000,92000,146000,188000]),{tipos:["1 mascota realista","1 mascota realista (sin piernas a la vista)"],medidasTipo:{"1 mascota realista (sin piernas a la vista)":MM([3,4,5,6,8,9],[64000,104000,144000,184000,292000,376000])},tipoDetalle:{"1 mascota realista (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"},posesTipo:{"1 mascota realista":POSES4},medidasPose:MP("1 mascota realista",[3,4,5,6,8,9],[[32000,52000,72000,92000,146000,188000],[48000,78000,108000,138000,219000,282000],[64000,104000,144000,184000,292000,376000],[96000,156000,216000,276000,438000,564000]])}),
       CP("p6","2 personas cartoon",MM([6,8,10],[90000,120000,170000]),{estilos:["Lindo","Genial","Arcilla","Lego","Funco","Monstruo","Melancólico"],mods:true}),
       CP("p7","1 persona + 1 mascota cartoon",MM([6,8,10],[80000,110000,153000]),{estilos:["Lindo","Genial","Melancólico","Arcilla","Dedo","Funco","Monstruo"],mods:true})
     ]},
@@ -2193,7 +2256,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true, p5tipos3:true, mascSinPiernas:true, colgSinPiernas46:true, posesReal1:true, posesPrecios1:true, posesP5cm3:true, p5sinPiernas2:true, llaveroMax1:true, posesPrecios2:true, escenaPoses1:true, posesAcEch1:true, preciosEscena1:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true, p5tipos3:true, mascSinPiernas:true, colgSinPiernas46:true, posesReal1:true, posesPrecios1:true, posesP5cm3:true, p5sinPiernas2:true, llaveroMax1:true, posesPrecios2:true, escenaPoses1:true, posesAcEch1:true, preciosEscena1:true, p5cm9:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
@@ -2230,17 +2293,17 @@ function cabLines(){
     titulo="Figura en cabina · 1 persona";
     L.push({d:`Figura de ${cmTxt(q.cm)} cm · ${TABLA_TXT[q.tabla]}${q.tabla!=="bebe"&&q.pos!=="pie"?" · "+POS_TXT[q.pos]:""}`, v:c.fig});
     accItems(q.acc,c.base,false).forEach(x=>L.push({d:`${x.it.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub, ind:true}));
-    (c.pets||[]).forEach(p=>L.push({d:`${RAZA_TXT[p.raza]} · ${cmTxt(p.cm)} cm · ${PPOS_TXT[p.pos]}`, v:p.precio}));
+    (c.pets||[]).forEach(p=>L.push({d:petDesc(p), v:p.precio}));
   } else if(q.modo==="grupo"){ const c=calcGrupo(q); total=c.total;
     titulo=`Figura en cabina · grupo de ${cmTxt(q.size)} cm`;
     c.per.forEach(r=>{
       L.push({d:`Persona ${r.i+1} (${mts(r.h)}) · ${r.cm!=null?cmTxt(r.cm)+" cm":"—"}${r.pos!=="pie"?" · "+POS_TXT[r.pos]:""}`, v:r.figP});
       if(r.base!=null) accItems(q.per[r.i].acc,r.base,true).forEach(x=>L.push({d:`${x.it.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub, ind:true}));
     });
-    c.pets.forEach(p=>L.push({d:`${RAZA_TXT[p.raza]} · ${cmTxt(p.cm)} cm · ${PPOS_TXT[p.pos]}`, v:p.precio}));
+    c.pets.forEach(p=>L.push({d:petDesc(p), v:p.precio}));
   } else { const c=calcMascota(q); total=c.total;
     titulo="Figura en cabina · mascota";
-    L.push({d:`${RAZA_TXT[q.raza]} · ${cmTxt(c.cm)} cm · ${PPOS_TXT[q.pos]}`, v:c.precio});
+    L.push({d:petDesc({sp:q.sp,pos:q.pos,cm:c.cm}), v:c.precio});
   }
   extItems(q).forEach(x=>L.push({d:`${x.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub}));
   return {titulo, lines:L, total, cabina:true};
@@ -2890,14 +2953,16 @@ const cmRow = cm => cmTxt(cm)+" cm";
 
 function qpSolas(keys){ return keys.map(t=>({titulo:TABLA_TXT[t], filas: tbl("solas",t).map(r=>[cmRow(r.cm), r.precio])})); }
 const qpNotaPos = ()=>`Arrodillado o en silla ×${cmTxt(P.mult.arrod)} · Sentadilla o en el suelo ×${cmTxt(P.mult.suelo)}`;
-const qpNotaAcc = ()=>`Accesorios aparte: grande +${cmTxt(P.pct.grande)}% · chico +${cmTxt(P.pct.chicoSolas)}% del valor de la figura`;
+const qpNotaAcc = ()=>`Accesorios aparte: grande +${cmTxt(P.pct.grande)}% · chico +${cmTxt(P.pct.chicoSolas)}%${P.pct.chicoUnidas!==P.pct.chicoSolas?` (en grupo +${cmTxt(P.pct.chicoUnidas)}%)`:""} del valor de la figura`;
 function qpGrupoSecs(){
   const ts = P.grupo.tallas||[];
   return [{titulo:"Persona más alta", filas: ts.map(t=>[cmRow(t), priceAt("unidas","alto",t)])},
           {titulo:"Si todos miden hasta 1,40 m (persona más alta)", filas: ts.map(t=>[cmRow(t), priceAt("unidas","bajo",t)])}];
 }
 const qpNotaGrupo = ()=>"El más alto se cobra con la medida elegida; los demás en proporción a su estatura, subiendo a la medida siguiente.";
-function qpMascota(razas){ return razas.map(k=>{ const cm=P.mascotaSola[k]||4; return {titulo:`${RAZA_TXT[k]} · ${cmTxt(cm)} cm`, filas: PPOS.map(pos=>[PPOS_TXT[pos], petPrice(cm,pos)])}; }); }
+function qpMascota(){ return PPOS.map(pos=>({titulo:`${PET_NOM} · ${PPOS_TXT[pos]}`, filas: petTabla(false,pos).map(m=>[cmRow(m.cm), m.precio])}))
+  .concat([{titulo:PET_SP_NOM, filas: petTabla(true).map(m=>[cmRow(m.cm), m.precio])}]); }
+const qpNotaMascota = ()=>`Mismos precios que Figura cartoon · 1 mascota realista. ${PET_SP_NOM}: ${PET_DET}.`;
 
 function qpProdSecs(p, titulo, soloTipo){
   const propios = (p.tipos||[]).filter(t=>(p.medidasTipo && Array.isArray(p.medidasTipo[t])) || tipoPoses(p,t).length);
@@ -2934,7 +2999,7 @@ function qpCabinaTodo(){
   const secs=[];
   qpSolas(["alto","bajo","bebe"]).forEach(x=>secs.push({grupo:"1 persona", ...x}));
   qpGrupoSecs().forEach(x=>secs.push({grupo:"Grupo", ...x}));
-  qpMascota(["chica","mediana","grande","gato"]).forEach(x=>secs.push({grupo:"Mascota sola", ...x}));
+  qpMascota().forEach(x=>secs.push({grupo:"Mascota", ...x}));
   return {titulo:"Figuras en cabina", sub:"Lista de precios", secciones:secs, notas:[qpNotaPos(), qpNotaAcc(), qpNotaGrupo()]};
 }
 function qpCartoonTodo(){
@@ -2952,11 +3017,11 @@ function qpInfo(el){
   if(a==="start"){
     if(v==="sola") return {titulo:"1 persona", sub:"Figuras en cabina", secciones:qpSolas(["alto","bajo","bebe"]), notas:[qpNotaPos(), qpNotaAcc()]};
     if(v==="grupo") return {titulo:"Grupo", sub:"Figuras en cabina · figuras unidas", secciones:qpGrupoSecs(), notas:[qpNotaGrupo(), qpNotaPos(), qpNotaAcc()]};
-    if(v==="mascota") return {titulo:"Mascota sola", sub:"Figuras en cabina", secciones:qpMascota(["chica","mediana","grande","gato"]), notas:[]};
+    if(v==="mascota") return {titulo:"Mascota sola", sub:"Figuras en cabina", secciones:qpMascota(), notas:[qpNotaMascota()]};
   }
   if(a==="tabla" && TABLA_TXT[v]) return {titulo:TABLA_TXT[v], sub:"1 persona · Figuras en cabina", secciones:qpSolas([v]).map(x=>({...x, titulo:""})), notas: v==="bebe"?[qpNotaAcc()]:[qpNotaPos(), qpNotaAcc()]};
-  if(a==="raza" && RAZA_TXT[v]) return {titulo:RAZA_TXT[v], sub:"Mascota sola · Figuras en cabina", secciones:qpMascota([v]), notas:[]};
-  if(a==="mpos" && cab.q && cab.q.raza) return {titulo:RAZA_TXT[cab.q.raza], sub:"Mascota sola · Figuras en cabina", secciones:qpMascota([cab.q.raza]), notas:[]};
+  if(a==="mtipo") return {titulo: v==="1"?PET_SP_NOM:PET_NOM, sub:"Mascota sola · Figuras en cabina", secciones: v==="1" ? qpMascota().slice(-1) : qpMascota().slice(0,4), notas:[qpNotaMascota()]};
+  if(a==="mpos" && PPOS.includes(v)) return {titulo:`${PET_NOM} · ${PPOS_TXT[v]}`, sub:"Mascota sola · Figuras en cabina", secciones: qpMascota().filter(x=>x.titulo===`${PET_NOM} · ${PPOS_TXT[v]}`), notas:[]};
   if(a==="cat"){ const k=C.cats.find(x=>x.id===v); if(!k) return null;
     return {titulo:k.nombre, sub:`Figuras cartoon · ${k.productos.length} opci${k.productos.length===1?"ón":"ones"}`, secciones:[].concat(...k.productos.map(p=>qpProdSecs(p))), notas:qpCatNotas(k)}; }
   if(a==="prod"){ const k=ctCat(), p=k&&k.productos.find(x=>x.id===v); if(!p) return null;

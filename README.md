@@ -21,3 +21,8 @@ Cada vez que se publica un cambio, agregar una entrada en `novedades.json` con `
 (lista de cambios en palabras simples) y subir `NOV_VERSION` en `index.html` al mismo número.
 La app muestra esa lista con el botón **Actualizar** en los equipos que tienen la versión anterior abierta,
 y con el botón **Entendido** en los que abren la app ya actualizada.
+
+## Mascotas en cabina
+Los precios de mascota en cabina se leen de **Figura cartoon → 1 mascota realista** (`p5`: tabla por pose y opción
+"sin piernas a la vista"), para que siempre cuesten lo mismo. `P.mascotas` / `P.mascotaSP` quedan solo como respaldo.
+Para cambiar precios de mascota, cambia `p5` (y deja el respaldo igual).
