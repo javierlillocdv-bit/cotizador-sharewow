@@ -111,8 +111,15 @@
       "Figuras en cabina: precios nuevos de personas según la planilla. Figura sola y unida cuestan lo mismo en cada medida; accesorio chico 10% también en grupos.",
       "Mascota en cabina: ya no se elige chica, mediana o grande. Se elige la pose, después los centímetros (3, 4, 5, 6, 8 y 9 cm) y sale el precio, igual que en cartoon.",
       "Mascota en cabina: nueva opción «sin piernas a la vista» (conejo, cuy, hámster, perro o gato de puro pelo).",
-      "Mascotas en cabina y Figura cartoon · 1 mascota realista tienen los mismos precios. Nuevo 9 cm: Parado $188.000, Sentado $282.000, Acostado $376.000, Echado $564.000.",
-      "Figura real con fotografía (modelado desde foto de la persona): solo figura sola de 9, 12, 15, 18 o 30 cm."
+      "Mascotas en cabina y Figura cartoon · 1 mascota realista tienen los mismos precios. Nuevo 9 cm: Parado $188.000, Sentado $282.000, Acostado $376.000, Echado $564.000."
+    ]
+  },
+  {
+    "n": 15,
+    "fecha": "25 de noviembre de 2026",
+    "cambios": [
+      "Figura cartoon · 1 persona cartoon: nuevo estilo «Figura realista» (figura real hecha desde fotos). Solo 9, 12, 15, 18 y 30 cm, con los mismos precios de la figura sola de cabina (persona alta desde $85.000).",
+      "En cabina, el extra «Modelado desde foto» queda como antes."
     ]
   }
 ]

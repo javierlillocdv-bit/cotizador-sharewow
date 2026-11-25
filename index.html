@@ -565,7 +565,7 @@ function registerSW(){
 // se muestra lo nuevo una vez con el botón "Entendido".
 // AL PUBLICAR UN CAMBIO: agregar en novedades.json una entrada con n = NOV_VERSION+1 y subir NOV_VERSION.
 const PAGINA_FECHA = Date.parse(document.lastModified)||0;
-const NOV_VERSION = 14;                       // última novedad que ya trae esta página
+const NOV_VERSION = 15;                       // última novedad que ya trae esta página
 const LS_NOV = "sw-novedades-visto";
 let APP_DENTRO = false;
 async function leerNovedades(){
@@ -842,6 +842,10 @@ async function loadAll(){
     C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p5") return; pon(p.medidas=p.medidas||[], F.Parado);
       Object.keys(F).forEach(x=>{ const tb=p.medidasPose && p.medidasPose[R+"|"+x]; if(Array.isArray(tb)) pon(tb, F[x]); });
       const cuy=p.medidasTipo && p.medidasTipo[R+" (sin piernas a la vista)"]; if(Array.isArray(cuy)) pon(cuy, 376000); })); C.p5cm9=true; }
+  // 1 persona cartoon: estilo "Figura realista" (figura real desde fotos, precios de cabina) (25-nov-2026)
+  if(C && C.cats && !C.p3real1){ C.cats.forEach(k=>(k.productos||[]).forEach(p=>{ if(p.id!=="p3") return;
+      p.estilos=p.estilos||[]; if(!p.estilos.includes("Figura realista")) p.estilos.push("Figura realista");
+      p.estilosReal=["Figura realista"]; })); C.p3real1=true; }
   let changed=false;
   walk(menu.tiles, t=>{ if(t.id==="cab2" && !t.tipo){ t.tipo="grupo"; t.encabezado="Centímetros"; t.tallas=[9,12,15,18]; t.maxPersonas=10; t.fuente="cab1"; changed=true; } });
   walk(menu.tiles, t=>{ if(t.id==="cab1" && !t.tipo){ t.tipo="medidas"; t.encabezado="Centímetros"; t.medidas=defaultMedidas(); changed=true; } });
@@ -1466,14 +1470,13 @@ function accItems(acc,base,unida){ const out=[]; for(const it of P.accesorios){ 
 function accTot(acc,base,unida){ return accItems(acc,base,unida).reduce((s,x)=>s+x.sub,0); }
 function extItems(q){
   const out=[]; for(const e of P.extras){ const n=(q.ext||{})[e.id]||0; if(n>0) out.push({nombre:e.nombre,q:n,sub:n*(Number(e.precio)||0)}); }
-  if(q.modP && fotoOK(q)) out.push({nombre:"Modelado desde foto (persona)",q:q.modP,sub:q.modP*P.modelado.persona});
+  if(q.modP) out.push({nombre:"Modelado desde foto (persona)",q:q.modP,sub:q.modP*P.modelado.persona});
   if(q.modM) out.push({nombre:"Modelado desde foto (mascota)",q:q.modM,sub:q.modM*P.modelado.mascota});
   return out;
 }
 function extTot(q){ return extItems(q).reduce((s,x)=>s+x.sub,0); }
-// Figura real con fotografía (modelado desde foto de la persona): solo figura sola de 9, 12, 15, 18 y 30 cm
+// Figura realista (figura real hecha desde fotos, en 1 persona cartoon): solo 9, 12, 15, 18 y 30 cm, con precios de figura sola de cabina
 const FOTO_CM=[9,12,15,18,30];
-const fotoOK = q => !!q && q.modo==="sola" && q.tabla!=="bebe" && FOTO_CM.includes(q.cm);
 function toM(v){ const x=cmIn(v); if(!(x>0)) return NaN; return x>3 ? x/100 : x; }
 // Mascotas en cabina: mismos precios que Figura cartoon · 1 mascota realista (se leen de ahí, para que nunca queden distintos).
 // Ya no se elige chica/mediana/grande: tipo (normal o sin piernas a la vista), pose y centímetros.
@@ -1746,10 +1749,8 @@ function cabScreenHTML(node){
       <div class="qty"><button ${attr} data-d="-1" aria-label="Quitar" ${n?"":"disabled"}>−</button><span>${n}</span><button ${attr} data-d="1" aria-label="Agregar">+</button></div></div>`;
     return `<div class="med"><div class="pillhead">Bases y extras</div>
       <div class="acclist">${P.extras.map(e=>row(e.nombre,e.precio,q.ext[e.id]||0,`data-a="eq" data-v="${e.id}"`)).join("")}
-        ${fotoOK(q)?row("Modelado desde foto (persona)",P.modelado.persona,q.modP||0,'data-a="mod" data-v="modP"'):""}
+        ${q.modo!=="mascota"?row("Modelado desde foto (persona)",P.modelado.persona,q.modP||0,'data-a="mod" data-v="modP"'):""}
         ${q.modo!=="sola"||(q.pets&&q.pets.length)?row("Modelado desde foto (mascota)",P.modelado.mascota,q.modM||0,'data-a="mod" data-v="modM"'):""}</div>
-      ${q.modo==="sola"&&!fotoOK(q)?`<p class="small" style="margin:10px 0 0">Figura real con fotografía (modelado desde foto de la persona): solo figura sola de 9, 12, 15, 18 o 30 cm.</p>`:""}
-      ${q.modo==="grupo"?`<p class="small" style="margin:10px 0 0">Figura real con fotografía (modelado desde foto de la persona): solo para figuras solas.</p>`:""}
       <div class="accsum">Extras: ${money(extTot(q))}</div>
       <button class="gen" data-a="back">Listo</button></div>`;
   }
@@ -1941,7 +1942,7 @@ const DEFAULT_C = {
   ],
   cats:[
     {id:"k1",nombre:"Figura cartoon",productos:[
-      CP("p3","1 persona cartoon",MM([4,6,8,10,12,15,18],[25000,55000,88000,135000,205000,398000,783000]),{estilos:[...E10,"Pixar","Semi realista"],detalle:"Sin accesorios",mods:true}),
+      CP("p3","1 persona cartoon",MM([4,6,8,10,12,15,18],[25000,55000,88000,135000,205000,398000,783000]),{estilos:[...E10,"Pixar","Semi realista","Figura realista"],estilosReal:["Figura realista"],detalle:"Sin accesorios",mods:true}),
       CP("p4","1 mascota cartoon",MM([3,4,5,6],[32000,52000,72000,92000]),{tipos:["1 mascota cartoon","1 mascota cartoon (sin piernas a la vista)"],medidasTipo:{"1 mascota cartoon (sin piernas a la vista)":MM([3,4,5,6],[62000,104000,144000,184000])},tipoDetalle:{"1 mascota cartoon (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"}}),
       CP("p5","1 mascota realista",MM([3,4,5,6,8,9],[32000,52000,72000,92000,146000,188000]),{tipos:["1 mascota realista","1 mascota realista (sin piernas a la vista)"],medidasTipo:{"1 mascota realista (sin piernas a la vista)":MM([3,4,5,6,8,9],[64000,104000,144000,184000,292000,376000])},tipoDetalle:{"1 mascota realista (sin piernas a la vista)":"Conejo, ardilla, cuy, hámster, o perro/gato de puro pelo"},posesTipo:{"1 mascota realista":POSES4},medidasPose:MP("1 mascota realista",[3,4,5,6,8,9],[[32000,52000,72000,92000,146000,188000],[48000,78000,108000,138000,219000,282000],[64000,104000,144000,184000,292000,376000],[96000,156000,216000,276000,438000,564000]])}),
       CP("p6","2 personas cartoon",MM([6,8,10],[90000,120000,170000]),{estilos:["Lindo","Genial","Arcilla","Lego","Funco","Monstruo","Melancólico"],mods:true}),
@@ -1990,8 +1991,8 @@ const CPOS_TXT = {pie:"De pie", sentado:"Sentado o hincado", piso:"En el piso o 
 const CAT_DIRECTO = ["k5","k6"];   // categorías de un solo producto que pasan directo a sus tipos o estilos
 const catDirecta = k => k && CAT_DIRECTO.includes(k.id) && k.productos.length===1;
 
-let ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pose:null, pos:"pie", acc:{}, ext:{}, draft:null};
-function ctReset(){ descPct=0; ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pose:null, pos:"pie", acc:{}, ext:{}, draft:null}; }
+let ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pose:null, estatura:null, pos:"pie", acc:{}, ext:{}, draft:null};
+function ctReset(){ descPct=0; ct = {hist:[], scr:"cats", cat:null, prod:null, cm:null, estilo:null, tipo:null, pose:null, estatura:null, pos:"pie", acc:{}, ext:{}, draft:null}; }
 function ctGo(s){ ct.hist.push(ct.scr); ct.scr=s; renderApp(); window.scrollTo(0,0); }
 function ctBack(){ if(ct.hist.length){ ct.scr=ct.hist.pop(); return true; } return false; }
 function ctCat(){ return C.cats.find(k=>k.id===ct.cat); }
@@ -2008,7 +2009,11 @@ function poseMeds(p,t,pose){ const src = pose && p.medidasPose && Array.isArray(
 function posePrecio(p,t,pose,cm){ const m=poseMeds(p,t,pose).find(x=>x.cm===cm); return m && okP(m.precio) ? m.precio : null; }
 function tablasPrecio(p,t){ const ps=tipoPoses(p,t); return ps.length ? ps.map(x=>poseMeds(p,t,x)) : [prodMeds(p,t)]; }
 // Medidas a elegir: las del tipo, o todas las que tengan sus poses
-function cmsActual(p){ return ct.pose && tipoPoses(p,ct.tipo).includes(ct.pose) ? poseMeds(p,ct.tipo,ct.pose).filter(m=>okP(m.precio)) : cmsTipo(p,ct.tipo); }
+// Estilo "Figura realista": precio de figura sola de cabina según estatura (alto/bajo), solo en FOTO_CM
+const esReal = (p,e)=>!!(p && e && Array.isArray(p.estilosReal) && p.estilosReal.includes(e));
+function realMeds(est){ return FOTO_CM.map(cm=>({cm, precio:priceAt("solas", est||"alto", cm)})).filter(m=>okP(m.precio)); }
+const realDesde = ()=>{ const L=realMeds("alto").map(m=>m.precio); return L.length?Math.min(...L):null; };
+function cmsActual(p){ if(esReal(p,ct.estilo)) return realMeds(ct.estatura); return ct.pose && tipoPoses(p,ct.tipo).includes(ct.pose) ? poseMeds(p,ct.tipo,ct.pose).filter(m=>okP(m.precio)) : cmsTipo(p,ct.tipo); }
 function cmsTipo(p,t){ const vistos={}, out=[]; tablasPrecio(p,t).forEach(tb=>tb.forEach(m=>{ if(!vistos[m.cm]){ vistos[m.cm]=1; out.push(m); } })); return out.sort((a,b)=>a.cm-b.cm); }
 function prodDesde(p,t){
   const tablas = t!==undefined ? tablasPrecio(p,t) : [prodMeds(p)].concat(...(p.tipos||[]).map(k=>tablasPrecio(p,k)));
@@ -2022,10 +2027,13 @@ function cAccList(){ return (C.accesorios && C.accesorios.length) ? C.accesorios
 function cAccItems(base){ const out=[]; for(const it of cAccList()){ const q=ct.acc[it.id]||0; if(q>0) out.push({it,q,sub:q*cItemPrice(base,it)}); } return out; }
 function ctCalc(){
   const p=ctProd(); const conPose = p && ct.pose && tipoPoses(p, ct.tipo).includes(ct.pose);
-  const m=p && !conPose && prodMeds(p, ct.tipo).find(x=>x.cm===ct.cm);
-  const base = conPose ? posePrecio(p, ct.tipo, ct.pose, ct.cm) : (m && okP(m.precio) ? m.precio : null);
+  const real = esReal(p, ct.estilo);   // Figura realista: precio de cabina (figura sola) y posiciones como en cabina
+  const m=p && !conPose && !real && prodMeds(p, ct.tipo).find(x=>x.cm===ct.cm);
+  const base = real ? (FOTO_CM.includes(ct.cm) ? priceAt("solas", ct.estatura||"alto", ct.cm) : null)
+    : conPose ? posePrecio(p, ct.tipo, ct.pose, ct.cm) : (m && okP(m.precio) ? m.precio : null);
   if(base==null) return {base:null};
-  const mult = p.mods ? (ct.pos==="sentado" ? 1+C.mods.sentado/100 : ct.pos==="piso" ? 1+C.mods.piso/100 : 1) : 1;
+  const mult = real ? (ct.pos==="sentado" ? P.mult.arrod : ct.pos==="piso" ? P.mult.suelo : 1)
+    : p.mods ? (ct.pos==="sentado" ? 1+C.mods.sentado/100 : ct.pos==="piso" ? 1+C.mods.piso/100 : 1) : 1;
   const fig = Math.round(base*mult);
   const items = prodAcc(p) ? cAccItems(base) : [];
   const acc = items.reduce((s,x)=>s+x.sub,0);
@@ -2067,12 +2075,19 @@ function cartoonScreenHTML(node){
     const conTipo = p.tipos && p.tipos.length && ct.tipo;
     return `<div class="med"><div class="pillhead">¿Qué estilo?</div>
       <p class="small" style="margin:-18px 0 22px;font-size:17px">${esc(p.nombre)}${conTipo?" · "+esc(ct.tipo):""} · ${tipoEstilos(p,ct.tipo).length} estilos</p>
-      <div class="choices">${tipoEstilos(p,ct.tipo).map(e=>bigBtn(e,"",`data-a="cest" data-v="${esc(e)}"`,"ct_est_"+p.id+(conTipo?"_"+ct.tipo:"")+"_"+e)).join("")}</div></div>`;
+      <div class="choices">${tipoEstilos(p,ct.tipo).map(e=>bigBtn(e,esReal(p,e)?`9 a 30 cm · desde ${money(realDesde())}`:"",`data-a="cest" data-v="${esc(e)}"`,"ct_est_"+p.id+(conTipo?"_"+ct.tipo:"")+"_"+e)).join("")}</div></div>`;
+  }
+  if(s==="estatura"){   // Figura realista: como en cabina, el precio depende de la estatura
+    const p=ctProd(); if(!p) return "";
+    return `<div class="med"><div class="pillhead">¿Cuánto mide?</div>
+      <p class="subcm">${esc(p.nombre)} · ${esc(ct.estilo)}</p><div class="choices">
+      ${bigBtn("1,41 m o más","Persona alta",'data-a="cestat" data-v="alto"',"cab_alto")}
+      ${bigBtn("Hasta 1,40 m","Persona baja",'data-a="cestat" data-v="bajo"',"cab_bajo")}</div></div>`;
   }
   if(s==="cm"){
     const p=ctProd(); if(!p) return "";
     return `<div class="med"><div class="pillhead">Centímetros</div>
-      <p class="subcm">${esc(nombreConTipo(p,ct.tipo))}${ct.pose&&tipoPoses(p,ct.tipo).length?" · "+esc(ct.pose):""}${ct.estilo?" · estilo "+esc(ct.estilo):""}${tipoDet(p,ct.tipo)?"<br>"+esc(tipoDet(p,ct.tipo)):""}</p>
+      <p class="subcm">${esc(nombreConTipo(p,ct.tipo))}${ct.pose&&tipoPoses(p,ct.tipo).length?" · "+esc(ct.pose):""}${ct.estilo?" · estilo "+esc(ct.estilo):""}${esReal(p,ct.estilo)&&ct.estatura?" · "+esc(TABLA_TXT[ct.estatura]):""}${tipoDet(p,ct.tipo)?"<br>"+esc(tipoDet(p,ct.tipo)):""}</p>
       <div class="ovals">${cmsActual(p).map(m=>`<button class="oval" data-a="ccm" data-v="${m.cm}">${esc(cmTxt(m.cm))}</button>`).join("")}</div></div>`;
   }
   if(s==="pose"){   // primero la pose (con su precio "desde"), después los centímetros
@@ -2085,9 +2100,11 @@ function cartoonScreenHTML(node){
     const p=ctProd(), k=ctCat(); if(!p) return "";
     const c=ctCalc();
     return `<div class="med"><div class="rcm" style="font-family:'Barlow Condensed',Barlow,sans-serif;font-weight:700;font-size:clamp(72px,13vw,140px);line-height:1">${esc(cmTxt(ct.cm))} CM</div>
-      <p class="subcm res">${esc(k.nombre)} · ${esc(p.nombre)}${ct.pose&&tipoPoses(p,ct.tipo).length?" · "+esc(ct.pose):""}${p.detalle?" · "+esc(p.detalle):""}${tipoDet(p,ct.tipo)?"<br>"+esc(ct.tipo)+": "+esc(tipoDet(p,ct.tipo)):""}</p>
+      <p class="subcm res">${esc(k.nombre)} · ${esc(p.nombre)}${ct.pose&&tipoPoses(p,ct.tipo).length?" · "+esc(ct.pose):""}${esReal(p,ct.estilo)?" · "+esc(ct.estilo)+" · "+esc(TABLA_TXT[ct.estatura||"alto"]):p.detalle?" · "+esc(p.detalle):""}${tipoDet(p,ct.tipo)?"<br>"+esc(ct.tipo)+": "+esc(tipoDet(p,ct.tipo)):""}</p>
       ${tipoEstilos(p,ct.tipo).length?`<div class="sumcard"><div class="sl"><b>Estilo</b><span>${ct.estilo?esc(ct.estilo):"elige uno"}</span></div>
         <div class="chips" style="justify-content:flex-start">${tipoEstilos(p,ct.tipo).map(e=>chip(e,ct.estilo===e,`data-a="estilo" data-v="${esc(e)}"`)).join("")}</div></div>`:""}
+      ${esReal(p,ct.estilo)?`<div class="sumcard"><div class="sl"><b>Estatura</b><span>${esc(TABLA_TXT[ct.estatura||"alto"])}</span></div>
+        <div class="chips" style="justify-content:flex-start">${["alto","bajo"].map(t=>chip(TABLA_TXT[t],(ct.estatura||"alto")===t,`data-a="cestatchip" data-v="${t}"`)).join("")}</div></div>`:""}
       ${tipoPoses(p,ct.tipo).length?`<div class="sumcard"><div class="sl"><b>Pose</b><span>${ct.pose?esc(ct.pose):"elige una"}</span></div>
         <div class="chips" style="justify-content:flex-start">${tipoPoses(p,ct.tipo).map(x=>chip(x,ct.pose===x,`data-a="posechip" data-v="${esc(x)}"`)).join("")}</div></div>`:""}
       ${p.tipos.length?`<div class="sumcard"><div class="sl"><b>Tipo</b><span>${ct.tipo?esc(ct.tipo):"elige uno"}</span></div>
@@ -2097,7 +2114,7 @@ function cartoonScreenHTML(node){
           <div class="row-btns" style="max-width:520px;margin:26px auto 0"><button class="btn primary" data-a="cnew">Nueva cotización</button></div>`
       : `${p.mods||prodAcc(p)?`<div class="sumcard">
           <div class="sl"><b>Figura${p.mods&&ct.pos!=="pie"?" · "+esc(CPOS_TXT[ct.pos]):""}</b><span>${money(c.fig)}</span></div>
-          ${p.mods?`<div class="chips" style="justify-content:flex-start">${Object.keys(CPOS_TXT).map(x=>chip(CPOS_TXT[x]+(x==="sentado"?` +${cmTxt(C.mods.sentado)}%`:x==="piso"?` +${cmTxt(C.mods.piso)}%`:""),ct.pos===x,`data-a="cpos" data-v="${x}"`)).join("")}</div>`:""}
+          ${p.mods?`<div class="chips" style="justify-content:flex-start">${Object.keys(CPOS_TXT).map(x=>{ const r=esReal(p,ct.estilo), pc = x==="sentado" ? (r?(P.mult.arrod-1)*100:C.mods.sentado) : x==="piso" ? (r?(P.mult.suelo-1)*100:C.mods.piso) : 0; return chip(CPOS_TXT[x]+(pc?` +${cmTxt(pc)}%`:""),ct.pos===x,`data-a="cpos" data-v="${x}"`); }).join("")}</div>`:""}
           ${prodAcc(p)?`<div class="sl" style="margin-top:12px"><b>Accesorios</b><span>${money(c.acc)}</span></div>
           ${accLine(c.items,'data-a="cacc"')}`:""}</div>`:""}
         ${(()=>{ const L=extItems({ext:ct.ext||{}}); return `<div class="sumcard"><div class="sl"><b>Bases y extras</b><span>${money(c.ext||0)}</span></div>
@@ -2137,7 +2154,7 @@ function ctText(){
   const p=ctProd(), k=ctCat(), c=ctCalc(), L=[];
   const nomT = ct.tipo && ct.tipo.indexOf(p.nombre)===0 ? ct.tipo : p.nombre, tipoT = ct.tipo && ct.tipo.indexOf(p.nombre)!==0 ? ct.tipo : "";
   const poseT = ct.pose && tipoPoses(p,ct.tipo).includes(ct.pose) ? ct.pose : "";
-  L.push(`${k.nombre}: ${nomT} ${cmTxt(ct.cm)} cm${poseT?" · "+poseT:""}${ct.estilo?" · estilo "+ct.estilo:""}${tipoT?" · "+tipoT:""}${p.mods&&ct.pos!=="pie"?" · "+CPOS_TXT[ct.pos]:""}: ${money(c.fig)}`);
+  L.push(`${k.nombre}: ${nomT} ${cmTxt(ct.cm)} cm${poseT?" · "+poseT:""}${ct.estilo?" · estilo "+ct.estilo:""}${esReal(p,ct.estilo)?" · "+TABLA_TXT[ct.estatura||"alto"]:""}${tipoT?" · "+tipoT:""}${p.mods&&ct.pos!=="pie"?" · "+CPOS_TXT[ct.pos]:""}: ${money(c.fig)}`);
   (c.items||[]).forEach(x=>L.push(`+ ${x.it.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`));
   extItems({ext:ct.ext||{}}).forEach(x=>L.push(`+ ${x.nombre}${x.q>1?" x"+x.q:""}: ${money(x.sub)}`));
   L.push(`Total: ${money(c.total)}`, ...descTxt(c.total));
@@ -2152,7 +2169,7 @@ function bindCartoon(node){
     if(a==="desc"){ descPct=Number(v)||0; renderApp(); return; }
     // tipo con poses: primero la pose y después la medida; al elegir la medida sale el precio
     const aMedida = ()=>{ const pp=ctProd(), ms=cmsActual(pp); if(ms.length===1){ ct.cm=ms[0].cm; ctGo("res"); } else ctGo("cm"); };
-    const startProd = id=>{ descPct=0; ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pose=null; ct.pos="pie"; ct.acc={}; ct.ext={};
+    const startProd = id=>{ descPct=0; ct.prod=id; ct.estilo=null; ct.tipo=null; ct.pose=null; ct.estatura=null; ct.pos="pie"; ct.acc={}; ct.ext={};
       const p=ctProd(), ms=prodMeds(p);
       if(p.tipos && p.tipos.length) ctGo("tipo");
       else if(p.estilos && p.estilos.length) ctGo("estilo");
@@ -2163,11 +2180,17 @@ function bindCartoon(node){
       if(tipoEstilos(p,v).length) ctGo("estilo");
       else if(tipoPoses(p,v).length) ctGo("pose");
       else aMedida(); }
+    else if(a==="cest" && esReal(ctProd(), v)){ ct.estilo=v; ct.estatura=null; ctGo("estatura"); }
+    else if(a==="cestat"){ ct.estatura=v; aMedida(); }
+    else if(a==="cestatchip"){ ct.estatura=v; const pp=ctProd(); if(pp && !cmsActual(pp).some(m=>m.cm===ct.cm)){ ct.acc={}; ctGo("cm"); } else renderApp(); }
     else if(a==="cest"){ ct.estilo=v; if(tipoPoses(ctProd(), ct.tipo).length && !ct.pose) ctGo("pose"); else aMedida(); }
     else if(a==="cpose"){ ct.pose=v; aMedida(); }
     else if(a==="ccm"){ ct.cm=Number(v); ct.pos="pie"; ct.acc={}; ctGo("res"); }
     else if(a==="posechip"){ ct.pose=v; const pp=ctProd(); if(pp && !cmsActual(pp).some(m=>m.cm===ct.cm)){ ct.acc={}; ctGo("cm"); } else renderApp(); }
-    else if(a==="estilo"){ ct.estilo = ct.estilo===v ? null : v; renderApp(); }
+    else if(a==="estilo"){ ct.estilo = ct.estilo===v ? null : v; const pp=ctProd();
+      // la Figura realista tiene otras medidas y pide la estatura
+      if(pp && esReal(pp,ct.estilo) && !ct.estatura) ctGo("estatura");
+      else if(pp && !cmsActual(pp).some(m=>m.cm===ct.cm)){ ct.acc={}; ctGo("cm"); } else renderApp(); }
     else if(a==="tipo"){ ct.tipo = ct.tipo===v ? null : v; const pp=ctProd(); if(pp && ct.estilo && !tipoEstilos(pp,ct.tipo).includes(ct.estilo)) ct.estilo=null;
       if(pp && ct.pose && !tipoPoses(pp,ct.tipo).includes(ct.pose)) ct.pose=null;
       // si el tipo nuevo tiene otra tabla de precios y no tiene esta medida, se vuelve a elegir la medida; si pide pose, se elige la pose
@@ -2256,7 +2279,7 @@ function bindCartoonEditor(){
   document.getElementById("ctSave").onclick=()=>{
     const n = v => (typeof v==="number" && !isNaN(v)) ? v : null;
     const list = s => String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
-    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true, p5tipos3:true, mascSinPiernas:true, colgSinPiernas46:true, posesReal1:true, posesPrecios1:true, posesP5cm3:true, p5sinPiernas2:true, llaveroMax1:true, posesPrecios2:true, escenaPoses1:true, posesAcEch1:true, preciosEscena1:true, p5cm9:true,
+    const out = { movAE:true, p20acc:true, colgAcc:true, p20ab:true, p20dos:true, p20masc:true, p22real:true, precios2610:true, p22est:true, precios1016:true, precios1016b:true, precios1016c:true, p5sin10:true, precios1016e:true, precios1017:true, p13oct17c:true, p18oct17:true, relieve1018:true, p3cm4:true, p21cm4:true, marcos1019b:true, p5cm8:true, p5tipos3:true, mascSinPiernas:true, colgSinPiernas46:true, posesReal1:true, posesPrecios1:true, posesP5cm3:true, p5sinPiernas2:true, llaveroMax1:true, posesPrecios2:true, escenaPoses1:true, posesAcEch1:true, preciosEscena1:true, p5cm9:true, p3real1:true,
       accesorios:(d.accesorios||[]).filter(a=>String(a.nombre||"").trim()).map(a=>({id:a.id||uid(),nombre:String(a.nombre).trim(),g:n(a.g)||0,c:n(a.c)||0})),
       mods:{sentado:n(d.mods.sentado)??DEFAULT_C.mods.sentado, piso:n(d.mods.piso)??DEFAULT_C.mods.piso, grande:n(d.mods.grande)??DEFAULT_C.mods.grande, chico:n(d.mods.chico)??DEFAULT_C.mods.chico},
       cats: d.cats.filter(k=>String(k.nombre||"").trim()).map(k=>({id:k.id||uid(), nombre:String(k.nombre).trim(),
@@ -2310,7 +2333,7 @@ function cabLines(){
 }
 function ctLines(){
   const p=ctProd(), k=ctCat(), c=ctCalc(), L=[];
-  const det=[`${cmTxt(ct.cm)} cm`]; if(ct.pose && tipoPoses(p,ct.tipo).includes(ct.pose)) det.push(ct.pose); if(ct.estilo) det.push("estilo "+ct.estilo); if(ct.tipo && ct.tipo!==p.nombre && ct.tipo.indexOf(p.nombre)!==0) det.push(ct.tipo); if(p.mods&&ct.pos!=="pie") det.push(CPOS_TXT[ct.pos]);
+  const det=[`${cmTxt(ct.cm)} cm`]; if(ct.pose && tipoPoses(p,ct.tipo).includes(ct.pose)) det.push(ct.pose); if(ct.estilo) det.push("estilo "+ct.estilo); if(esReal(p,ct.estilo)) det.push(TABLA_TXT[ct.estatura||"alto"]); if(ct.tipo && ct.tipo!==p.nombre && ct.tipo.indexOf(p.nombre)!==0) det.push(ct.tipo); if(p.mods&&ct.pos!=="pie") det.push(CPOS_TXT[ct.pos]);
   L.push({d:`${ct.tipo && ct.tipo.indexOf(p.nombre)===0 ? ct.tipo : p.nombre} · ${det.join(" · ")}`, v:c.fig});
   (c.items||[]).forEach(x=>L.push({d:`${x.it.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub, ind:true}));
   extItems({ext:ct.ext||{}}).forEach(x=>L.push({d:`${x.nombre}${x.q>1?" x"+x.q:""}`, v:x.sub}));
@@ -2965,6 +2988,12 @@ function qpMascota(){ return PPOS.map(pos=>({titulo:`${PET_NOM} · ${PPOS_TXT[po
 const qpNotaMascota = ()=>`Mismos precios que Figura cartoon · 1 mascota realista. ${PET_SP_NOM}: ${PET_DET}.`;
 
 function qpProdSecs(p, titulo, soloTipo){
+  const out=qpProdSecsBase(p, titulo, soloTipo);
+  (p.estilosReal||[]).filter(e=>(p.estilos||[]).includes(e)).forEach(e=>["alto","bajo"].forEach(t=>
+    out.push({titulo:`${p.nombre} · ${e} · ${TABLA_TXT[t]}`, filas: realMeds(t).map(m=>[cmRow(m.cm), m.precio])})));
+  return out;
+}
+function qpProdSecsBase(p, titulo, soloTipo){
   const propios = (p.tipos||[]).filter(t=>(p.medidasTipo && Array.isArray(p.medidasTipo[t])) || tipoPoses(p,t).length);
   if(!propios.length) return [qpProdSec(p, titulo)];
   const tipos = soloTipo ? [soloTipo] : p.tipos, out=[];
@@ -2983,7 +3012,8 @@ const qpNotaCAcc = ()=>`Accesorios aparte: grande +${cmTxt(C.mods.grande)}% · c
 function qpProdNotas(p, tipo){
   const n=[];
   if(p.tipos&&p.tipos.length) n.push(`Tipos: ${p.tipos.join(", ")}`);
-  const et=tipoEstilos(p,tipo); if(et.length) n.push(`Estilos (todos al mismo precio): ${et.join(", ")}`);
+  const et=tipoEstilos(p,tipo); if(et.length) n.push(`Estilos: ${et.join(", ")}${(p.estilosReal||[]).length?" (todos al mismo precio, menos "+p.estilosReal.join(", ")+")":" (todos al mismo precio)"}`);
+  (p.estilosReal||[]).forEach(e=>n.push(`${e}: precio de figura real de cabina (figura sola), solo ${FOTO_CM.join(", ")} cm; arrodillado o en silla ×${cmTxt(P.mult.arrod)}, sentadilla o en el suelo ×${cmTxt(P.mult.suelo)}`));
   (p.tipos||[]).filter(t=>tipoPoses(p,t).length && (!tipo || tipo===t)).forEach(t=>{ const ps=tipoPoses(p,t);
     n.push(`Poses de ${t}: ${ps.join(", ")}${ps.some(x=>p.medidasPose && p.medidasPose[t+"|"+x]) ? "" : " (todas al mismo precio)"}`); });
   if(p.mods) n.push(qpNotaMods());
