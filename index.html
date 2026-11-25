@@ -565,7 +565,7 @@ function registerSW(){
 // se muestra lo nuevo una vez con el botón "Entendido".
 // AL PUBLICAR UN CAMBIO: agregar en novedades.json una entrada con n = NOV_VERSION+1 y subir NOV_VERSION.
 const PAGINA_FECHA = Date.parse(document.lastModified)||0;
-const NOV_VERSION = 15;                       // última novedad que ya trae esta página
+const NOV_VERSION = 16;                       // última novedad que ya trae esta página
 const LS_NOV = "sw-novedades-visto";
 let APP_DENTRO = false;
 async function leerNovedades(){
@@ -826,16 +826,16 @@ async function loadAll(){
     C.cats.forEach(k=>(k.productos||[]).forEach(p=>{
       if(p.id==="p3"){ const m=(p.medidas||[]).find(x=>x.cm===8); if(m) m.precio=88000; }
       if(TAB[p.id]) p.medidas=TAB[p.id]; })); C.preciosEscena1=true; }
-  // Planilla 25-nov-2026: personas en cabina (solas = unidas a la misma medida; accesorio chico 10% también en unidas)
-  if(P && !P.planilla1125){ const T2=(sz,f)=>sz.map((cm,i)=>({cm,precio:f[i]}));
-    P.solas=Object.assign({}, P.solas||{}, {alto:T2([6,7,8,9,12,15,18,30],[30000,48000,62000,85000,165000,229000,320000,799000]), bajo:T2([6,7,8,9,12,15,18],[42000,61000,83000,112000,217000,360000,508000]), bebe:T2([4,6,7,8],[37000,100000,152000,221000])});
-    P.unidas=Object.assign({}, P.unidas||{}, {alto:T2([6,7,8,9,10,11,12,13,14,15,16,17,18,30],[30000,48000,62000,85000,121000,147000,165000,187000,205000,229000,264000,293000,320000,799000]), bajo:T2([6,7,8,9,10,11,12,13,14,15,16,17,18],[42000,61000,83000,112000,141000,177000,217000,262000,320000,360000,408000,459000,508000])});
+  // Planilla 25-nov-2026 (versión de la tarde): personas en cabina (solas = unidas a la misma medida; accesorio chico 10% también en unidas)
+  if(P && !P.planilla1125b){ const T2=(sz,f)=>sz.map((cm,i)=>({cm,precio:f[i]}));
+    P.solas=Object.assign({}, P.solas||{}, {alto:T2([6,7,8,9,12,15,18,30],[32000,48000,62000,87000,165000,250000,350000,799000]), bajo:T2([6,7,8,9,12,15,18],[45000,66000,87000,112000,217000,360000,508000]), bebe:T2([4,6,7,8],[48000,100000,152000,221000])});
+    P.unidas=Object.assign({}, P.unidas||{}, {alto:T2([6,7,8,9,10,11,12,13,14,15,16,17,18,30],[32000,48000,62000,87000,121000,147000,165000,189000,217000,250000,280000,314000,350000,799000]), bajo:T2([6,7,8,9,10,11,12,13,14,15,16,17,18],[45000,66000,87000,112000,141000,177000,217000,262000,320000,360000,408000,459000,508000])});
     P.pct=Object.assign({}, P.pct||{}, {grande:50, chicoSolas:10, chicoUnidas:10});
     P.mult=Object.assign({}, P.mult||{}, {arrod:1.5, suelo:3});
     P.mascotas=[[3,32000,48000,64000,96000],[4,52000,78000,104000,156000],[5,72000,108000,144000,216000],[6,92000,138000,184000,276000],[8,146000,219000,292000,438000],[9,188000,282000,376000,564000]]
       .map(([cm,parado,sentado,acostado,echado])=>({cm,parado,sentado,acostado,echado}));
     P.mascotaSP=T2([3,4,5,6,8,9],[64000,104000,144000,184000,292000,376000]);
-    P.planilla1125=true; }
+    P.planilla1125b=true; }
   // Figura cartoon · 1 mascota realista: 9 cm (25-nov-2026)
   if(C && C.cats && !C.p5cm9){ const R="1 mascota realista", F={Parado:188000, Sentado:282000, Acostado:376000, Echado:564000};
     const pon=(tb,precio)=>{ const m=tb.find(x=>x.cm===9); if(m) m.precio=precio; else { tb.push({cm:9,precio}); tb.sort((a,b)=>a.cm-b.cm); } };
@@ -1373,13 +1373,13 @@ const S_SOLA=[6,7,8,9,12,15,18,30], S_UNI=[6,7,8,9,10,11,12,13,14,15,16,17,18,30
 const DEFAULT_P = {
   umbral:1.40,
   solas:{
-    alto:TT(S_SOLA,[30000,48000,62000,85000,165000,229000,320000,799000]),
-    bajo:TT(S_SOLA.slice(0,7),[42000,61000,83000,112000,217000,360000,508000]),
-    bebe:TT([4,6,7,8],[37000,100000,152000,221000])
+    alto:TT(S_SOLA,[32000,48000,62000,87000,165000,250000,350000,799000]),
+    bajo:TT(S_SOLA.slice(0,7),[45000,66000,87000,112000,217000,360000,508000]),
+    bebe:TT([4,6,7,8],[48000,100000,152000,221000])
   },
   unidas:{
-    alto:TT(S_UNI,[30000,48000,62000,85000,121000,147000,165000,187000,205000,229000,264000,293000,320000,799000]),
-    bajo:TT(S_UNI.slice(0,13),[42000,61000,83000,112000,141000,177000,217000,262000,320000,360000,408000,459000,508000])
+    alto:TT(S_UNI,[32000,48000,62000,87000,121000,147000,165000,189000,217000,250000,280000,314000,350000,799000]),
+    bajo:TT(S_UNI.slice(0,13),[45000,66000,87000,112000,141000,177000,217000,262000,320000,360000,408000,459000,508000])
   },
   mult:{arrod:1.5, suelo:3},
   pct:{grande:50, chicoSolas:10, chicoUnidas:10},
