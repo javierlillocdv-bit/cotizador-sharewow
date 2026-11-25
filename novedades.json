@@ -92,5 +92,16 @@
     "cambios": [
       "Mascotas realistas con pose (figura, llavero y escena): se corrigió el precio de Acostado y Echado, que estaban al revés. Ahora Echado es la pose más cara."
     ]
+  },
+  {
+    "n": 13,
+    "fecha": "25 de noviembre de 2026",
+    "cambios": [
+      "1 persona cartoon 8 cm: $88.000.",
+      "1 persona en escena: 6 cm $55.000, 8 cm $83.000 y nuevas medidas 10 cm $170.000, 12 cm $292.000, 15 cm $393.000.",
+      "2 personas en escena: 6 cm $97.000, 8 cm $153.000 y nuevas medidas 10 cm $328.000, 12 cm $573.000, 15 cm $772.000.",
+      "3 personas en escena: 6 cm $139.000, 8 cm $223.000 y nueva medida 10 cm $485.000.",
+      "4 personas en escena: 6 cm $181.000, 8 cm $293.000 y nueva medida 10 cm $643.000."
+    ]
   }
 ]
